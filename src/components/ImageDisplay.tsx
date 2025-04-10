@@ -17,6 +17,9 @@ const ImageDisplay = () => {
     const image = searchParams.get('image');
     const prompt = searchParams.get('prompt');
 
+    console.log("Image URL from params:", image);
+    console.log("Prompt from params:", prompt);
+
     if (image && prompt) {
       setGeneratedImage(image);
       setPrompt(prompt);

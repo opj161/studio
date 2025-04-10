@@ -83,6 +83,11 @@ const generateClothingImageFlow = ai.defineFlow<
   },
   async input => {
     const {output} = await prompt(input);
+
+    // Log the generated image URL and prompt
+    console.log("Generated Image URL:", output?.generatedImageUrl);
+    console.log("Prompt Used:", output?.promptUsed);
+
     return output!;
   }
 );
