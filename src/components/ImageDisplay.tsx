@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -16,27 +15,23 @@ const ImageDisplay = () => {
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    const image = searchParams.get('image');
-    const prompt = searchParams.get('prompt');
+    setLoading(true);
+    setError(null);
 
-    console.log("Image URL from params:", image);
-    console.log("Prompt from params:", prompt);
+    const image = localStorage.getItem('generatedImageUrl');
+    const promptText = localStorage.getItem('prompt');
 
-    if (image && prompt) {
+    if (image && promptText) {
       setGeneratedImage(image);
-      setPrompt(prompt);
+      setPrompt(promptText);
       setLoading(false);
-      setError(null);
-    } else if (searchParams.has('image') || searchParams.has('prompt')) {
+    } else {
       setGeneratedImage(null);
       setPrompt(null);
       setLoading(false);
-      setError("Failed to load image and prompt.");
-    } else {
-      setLoading(false);
-      setError(null);
+      setError("No image generated yet.");
     }
-  }, [searchParams]);
+  }, []);
 
   return (
     <div className="mt-8">

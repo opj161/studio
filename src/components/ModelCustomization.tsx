@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from 'react';
@@ -38,16 +37,22 @@ const ModelCustomization = () => {
       });
 
       if (result && result.generatedImageUrl && result.promptUsed) {
-        const newParams = new URLSearchParams(searchParams);
-        newParams.set('image', result.generatedImageUrl);
-        newParams.set('prompt', result.promptUsed);
-        router.push(`/?${newParams.toString()}`);
+        // Store the generated image URL and prompt in local storage
+        localStorage.setItem('generatedImageUrl', result.generatedImageUrl);
+        localStorage.setItem('prompt', result.promptUsed);
 
         // Store the generated image URL in local storage
         const storedHistory = localStorage.getItem('generationHistory');
         const history = storedHistory ? JSON.parse(storedHistory) : [];
         const newHistory = [result.generatedImageUrl, ...history].slice(0, 5); // Limit to 5 items
         localStorage.setItem('generationHistory', JSON.stringify(newHistory));
+        localStorage.setItem(`prompt_${result.generatedImageUrl}`, result.promptUsed);
+
+
+        const newParams = new URLSearchParams(searchParams);
+        newParams.set('image', result.generatedImageUrl);
+        newParams.set('prompt', result.promptUsed);
+        router.push(`/?${newParams.toString()}`);
 
         toast({
           title: "Image Generated",
