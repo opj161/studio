@@ -1,6 +1,6 @@
 'use server';
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import * as fs from "node:fs";
 import { z } from "zod";
 import { v4 as uuidv4 } from 'uuid';
@@ -40,7 +40,7 @@ async function downloadImageAsBase64(imageUrl: string): Promise<string> {
 
 export async function generateClothingImage(input: GenerateClothingImageInput): Promise<GenerateClothingImageOutput> {
   try {
-    const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENAI_API_KEY || "");
+    const genAI = new GoogleGenAI({ apiKey: process.env.GOOGLE_GENAI_API_KEY || "" });
 
     const base64Image = await downloadImageAsBase64(input.clothingItemUrl);
 
@@ -69,17 +69,27 @@ The generated image should realistically depict the clothing item on the model w
       },
     ];
 
-    const model = genAI.getModel({ model: "gemini-pro-vision" });
-
-    const response = await model.generateContent({
+    const response = await genAI.models.generateContent({
+      model: "gemini-2.0-flash-exp-image-generation",
       contents: contents,
+      config: {
+        responseModalities: ["Text", "Image"],
+      },
     });
-
-    const text = response.text();
-    console.log(text);
-     const filename = `generated_${uuidv4()}.png`;
+    
+    let generatedImageUrl = '';
+    for (const part of response.candidates[0].content.parts) {
+      if (part.text) {
+        console.log("Generated Text:", part.text);
+        generatedImageUrl = part.text;
+      } else if (part.inlineData) {
+        const imageData = part.inlineData.data;
+        generatedImageUrl = `data:image/png;base64,${imageData}`;
+      }
+    }
+    const filename = `generated_${uuidv4()}.png`;
     return {
-      generatedImageUrl: text,
+      generatedImageUrl: generatedImageUrl,
       promptUsed: prompt,
     };
   } catch (error: any) {
@@ -87,5 +97,3 @@ The generated image should realistically depict the clothing item on the model w
     throw new Error(error.message || "Failed to generate image");
   }
 }
-
-    
