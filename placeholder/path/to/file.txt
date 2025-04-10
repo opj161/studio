@@ -1,5 +1,0 @@
-]]<changes>
-  <change>
-    <file>placeholder/path/to/file.txt</file>
-    <description>Placeholder description of change.</description>
-    <content><![CDATA[
