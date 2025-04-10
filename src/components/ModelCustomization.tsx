@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
-import { generateClothingImage } from '@/ai/flows/generate-clothing-image';
+import { generateClothingImage } from '@/app/actions'; // Updated import
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -209,3 +209,5 @@ const ModelCustomization = () => {
 };
 
 export default ModelCustomization;
+
+    
