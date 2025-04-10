@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -10,6 +11,7 @@ const ImageDisplay = () => {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [prompt, setPrompt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const searchParams = useSearchParams();
 
@@ -23,8 +25,17 @@ const ImageDisplay = () => {
     if (image && prompt) {
       setGeneratedImage(image);
       setPrompt(prompt);
+      setLoading(false);
+      setError(null);
+    } else if (searchParams.has('image') || searchParams.has('prompt')) {
+      setGeneratedImage(null);
+      setPrompt(null);
+      setLoading(false);
+      setError("Failed to load image and prompt.");
+    } else {
+      setLoading(false);
+      setError(null);
     }
-    setLoading(false);
   }, [searchParams]);
 
   return (
@@ -51,6 +62,10 @@ const ImageDisplay = () => {
              </CardContent>
            </Card>
         </Grid>
+      ) : error ? (
+        <div className="text-center text-red-500">
+          <p>Error: {error}</p>
+        </div>
       ) : generatedImage && prompt ? (
         <Grid numColumns={2} className="gap-6">
           <Card>

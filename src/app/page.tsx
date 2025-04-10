@@ -1,3 +1,4 @@
+
 import ClothingUpload from '@/components/ClothingUpload';
 import ImageDisplay from '@/components/ImageDisplay';
 import ModelCustomization from '@/components/ModelCustomization';
@@ -9,9 +10,9 @@ import { cn } from "@/lib/utils";
 
 export default function Home() {
   return (
-    <div className="container mx-auto py-10">
+    <div>
       <Toaster />
-      <h1 className="text-2xl font-bold mb-6 text-center">StyleAI</h1>
+      <h1 className="text-2xl font-bold mb-6 text-center">Virtual Fashion App</h1>
       <Grid numColumns={2} className="gap-6">
         <Card>
           <CardContent className="p-4">
