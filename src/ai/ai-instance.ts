@@ -10,5 +10,5 @@ export const ai = genkit({
       maxContentSize: 20 * 1024 * 1024,
     }),
   ],
-  model: 'googleai/gemini-2.0-flash',
+  model: 'googleai/gemini-2.0-flash-exp',
 });
