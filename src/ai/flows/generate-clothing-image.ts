@@ -69,7 +69,7 @@ Environment Settings:
 - Lens Style: {{{lensStyle}}}
 
 The generated image should realistically depict the clothing item on the model with the specified attributes and environment settings.  Return the url to the image. Also return the prompt used to generate the image.
-`,
+`
 });
 
 const generateClothingImageFlow = ai.defineFlow<
@@ -82,12 +82,31 @@ const generateClothingImageFlow = ai.defineFlow<
     outputSchema: GenerateClothingImageOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
+    try {
+      const {output} = await prompt(input);
+
+      // Check if output is null or undefined
+      if (!output) {
+        console.error("Error: Image generation failed, output is null or undefined.");
+        throw new Error("Image generation failed: No output received from the AI.");
+      }
+
+      // Check if generatedImageUrl is valid
+      if (!output.generatedImageUrl) {
+        console.error("Error: generatedImageUrl is null or undefined.");
+        console.log("Full Output:", output); // Log the entire output object for inspection
+        throw new Error("Image generation failed: No generated image URL received from the AI.");
+      }
 
     // Log the generated image URL and prompt
     console.log("Generated Image URL:", output?.generatedImageUrl);
     console.log("Prompt Used:", output?.promptUsed);
 
-    return output!;
+      return output!;
+    } catch (error) {
+      console.error("Error in generateClothingImageFlow:", error);
+      // Re-throw the error to be caught in the component
+      throw error;
+    }
   }
 );

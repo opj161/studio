@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Grid } from "@/components/ui/grid";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 const ImageDisplay = () => {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
@@ -19,12 +20,14 @@ const ImageDisplay = () => {
   const [lensStyle, setLensStyle] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+    const [imageLoadError, setImageLoadError] = useState<boolean>(false);
 
   const searchParams = useSearchParams();
 
   useEffect(() => {
     setLoading(true);
     setError(null);
+    setImageLoadError(false);
 
     // Retrieve data from local storage
     const image = localStorage.getItem('generatedImageUrl');
@@ -66,6 +69,22 @@ const ImageDisplay = () => {
     }
   }, []);
 
+    const handleImageLoadError = () => {
+        console.error("Error loading generated image.");
+        setImageLoadError(true);
+    };
+
+    // Retry loading the image after a delay
+    useEffect(() => {
+        if (imageLoadError && generatedImage) {
+            const retryTimeout = setTimeout(() => {
+                setImageLoadError(false);
+            }, 3000); // Retry after 3 seconds
+
+            return () => clearTimeout(retryTimeout);
+        }
+    }, [imageLoadError, generatedImage]);
+
   return (
     <div className="mt-8">
       <h2 className="text-lg font-semibold mb-4 text-center">Generated Image</h2>
@@ -91,9 +110,12 @@ const ImageDisplay = () => {
            </Card>
         </Grid>
       ) : error ? (
-        <div className="text-center text-red-500">
-          <p>Error: {error}</p>
-        </div>
+          <Alert variant="destructive">
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>
+                  {error}
+              </AlertDescription>
+          </Alert>
       ) : generatedImage && prompt ? (
         <Grid numColumns={2} className="gap-6">
           <Card>
@@ -101,7 +123,21 @@ const ImageDisplay = () => {
               <CardTitle>Generated Image</CardTitle>
             </CardHeader>
             <CardContent>
-              <img src={generatedImage} alt="Generated" className="max-w-full h-auto rounded-md" />
+                {imageLoadError ? (
+                    <Alert variant="destructive">
+                        <AlertTitle>Error</AlertTitle>
+                        <AlertDescription>
+                            Failed to load the image. Retrying...
+                        </AlertDescription>
+                    </Alert>
+                ) : (
+                  <img
+                    src={generatedImage}
+                    alt="Generated"
+                    className="max-w-full h-auto rounded-md"
+                    onError={handleImageLoadError}
+                  />
+                )}
             </CardContent>
           </Card>
           <Card>

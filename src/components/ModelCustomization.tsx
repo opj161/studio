@@ -18,7 +18,7 @@ const ModelCustomization = () => {
   const [environment, setEnvironment] = useState('Studio');
   const [lighting, setLighting] = useState('Natural');
   const [lens, setLens] = useState('Standard');
-  const [clothingItemUrl, setClothingItemUrl] = useState<string>('https://pngimg.com/uploads/dress/dress_PNG33.png');
+  const [clothingItemUrl, setClothingItemUrl] = useState('https://pngimg.com/uploads/dress/dress_PNG33.png');
   const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -79,11 +79,11 @@ const ModelCustomization = () => {
           variant: "destructive",
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error generating image:", error);
       toast({
         title: "Error",
-        description: "An unexpected error occurred. Please try again.",
+        description: error.message || "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     }
@@ -183,7 +183,7 @@ const ModelCustomization = () => {
             <SelectContent>
               <SelectItem value="Natural">Natural</SelectItem>
               <SelectItem value="Artificial">Artificial</SelectItem>
-              <SelectItem value="Soft">Soft</SelectItem>
+              <SelectItem value="Soft">Soft"></SelectItem>
               <SelectItem value="Hard">Hard</SelectItem>
             </SelectContent>
           </Select>
