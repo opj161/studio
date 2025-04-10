@@ -25,6 +25,18 @@ const ModelCustomization = () => {
 
   const handleSubmit = async () => {
     try {
+      // Store clothing item URL and model attributes in local storage
+      localStorage.setItem('clothingItemUrl', clothingItemUrl);
+      localStorage.setItem('modelGender', gender);
+      localStorage.setItem('modelBodyType', bodyType);
+      localStorage.setItem('modelAgeRange', ageRange);
+      localStorage.setItem('modelEthnicity', ethnicity);
+      localStorage.setItem('environmentDescription', environment);
+      localStorage.setItem('lightingStyle', lighting);
+      localStorage.setItem('lensStyle', lens);
+
+      console.log("clothingItemUrl being sent to AI:", clothingItemUrl)
+
       const result = await generateClothingImage({
         clothingItemUrl,
         modelGender: gender,
@@ -48,6 +60,8 @@ const ModelCustomization = () => {
         localStorage.setItem('generationHistory', JSON.stringify(newHistory));
         localStorage.setItem(`prompt_${result.generatedImageUrl}`, result.promptUsed);
 
+        console.log("Generated Image URL:", result.generatedImageUrl);
+        console.log("Prompt Used:", result.promptUsed);
 
         const newParams = new URLSearchParams(searchParams);
         newParams.set('image', result.generatedImageUrl);
