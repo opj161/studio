@@ -78,14 +78,19 @@ The generated image should realistically depict the clothing item on the model w
     });
     
     let generatedImageUrl = '';
-    for (const part of response.candidates[0].content.parts) {
-      if (part.text) {
-        console.log("Generated Text:", part.text);
-        generatedImageUrl = part.text;
-      } else if (part.inlineData) {
-        const imageData = part.inlineData.data;
-        generatedImageUrl = `data:image/png;base64,${imageData}`;
+    if (response && response.candidates && response.candidates[0].content && response.candidates[0].content.parts) {
+      for (const part of response.candidates[0].content.parts) {
+        if (part.text) {
+          console.log("Generated Text:", part.text);
+          generatedImageUrl = part.text;
+        } else if (part.inlineData) {
+          const imageData = part.inlineData.data;
+          generatedImageUrl = `data:image/png;base64,${imageData}`;
+        }
       }
+    } else {
+      console.error("Unexpected response format from Gemini:", response);
+      throw new Error("Failed to extract image data from the response.");
     }
     const filename = `generated_${uuidv4()}.png`;
     return {

@@ -25,6 +25,16 @@ const ModelCustomization = () => {
 
   const handleSubmit = async () => {
     try {
+      // Validate inputs
+      if (!clothingItemUrl) {
+        toast({
+          title: "Error",
+          description: "Please enter a clothing item URL.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Store clothing item URL and model attributes in local storage
       localStorage.setItem('clothingItemUrl', clothingItemUrl);
       localStorage.setItem('modelGender', gender);
@@ -209,5 +219,3 @@ const ModelCustomization = () => {
 };
 
 export default ModelCustomization;
-
-    
