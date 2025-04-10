@@ -18,7 +18,7 @@ const ModelCustomization = () => {
   const [environment, setEnvironment] = useState('Studio');
   const [lighting, setLighting] = useState('Natural');
   const [lens, setLens] = useState('Standard');
-  const [clothingItemUrl, setClothingItemUrl] = useState<string>('https://picsum.photos/200/300');
+  const [clothingItemUrl, setClothingItemUrl] = useState<string>('https://pngimg.com/uploads/dress/dress_PNG33.png');
   const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
