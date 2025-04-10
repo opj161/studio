@@ -1,7 +1,6 @@
 'use server';
 
 import { GoogleGenAI } from "@google/genai";
-import * as fs from "node:fs";
 import { z } from "zod";
 import { v4 as uuidv4 } from 'uuid';
 
@@ -40,7 +39,12 @@ async function downloadImageAsBase64(imageUrl: string): Promise<string> {
 
 export async function generateClothingImage(input: GenerateClothingImageInput): Promise<GenerateClothingImageOutput> {
   try {
-    const genAI = new GoogleGenAI({ apiKey: process.env.GOOGLE_GENAI_API_KEY || "" });
+    const apiKey = process.env.GOOGLE_GENAI_API_KEY;
+    if (!apiKey) {
+      throw new Error("GOOGLE_GENAI_API_KEY is not set in environment variables.");
+    }
+
+    const genAI = new GoogleGenAI({ apiKey: apiKey });
 
     const base64Image = await downloadImageAsBase64(input.clothingItemUrl);
 
@@ -69,16 +73,23 @@ The generated image should realistically depict the clothing item on the model w
       },
     ];
 
-    const response = await genAI.models.generateContent({
+    const model = genAI.models.generateContent({
       model: "gemini-2.0-flash-exp-image-generation",
       contents: contents,
       config: {
-        responseModalities: ["Text", "Image"],
+        responseModalities: ["Image"],
       },
     });
     
+    const response = await model.generateContent({
+        contents: contents,
+        config: {
+          responseModalities: ["Image"],
+        },
+      });
+
     let generatedImageUrl = '';
-    if (response && response.candidates && response.candidates[0].content && response.candidates[0].content.parts) {
+    if (response && response.candidates && response.candidates[0]?.content?.parts) {
       for (const part of response.candidates[0].content.parts) {
         if (part.text) {
           console.log("Generated Text:", part.text);
@@ -90,7 +101,7 @@ The generated image should realistically depict the clothing item on the model w
       }
     } else {
       console.error("Unexpected response format from Gemini:", response);
-      throw new Error("Failed to extract image data from the response.");
+      throw new Error("Failed to extract image data from the response.  Check response object.");
     }
     const filename = `generated_${uuidv4()}.png`;
     return {
@@ -99,6 +110,8 @@ The generated image should realistically depict the clothing item on the model w
     };
   } catch (error: any) {
     console.error("Error generating image:", error);
-    throw new Error(error.message || "Failed to generate image");
+    console.error("Detailed error information:", error.message, error.stack); // Log detailed error info
+    throw new Error(error.message || "Failed to generate image.  Check the server logs for more details.");
   }
 }
+
