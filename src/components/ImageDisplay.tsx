@@ -1,167 +1,143 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import Image from 'next/image';
+import { useState } from 'react';
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Grid } from "@/components/ui/grid";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button";
+import { Download, Share, Undo } from 'lucide-react';
+import { useGenerationStore } from '@/lib/store';
+import { Progress } from "@/components/ui/progress";
 
-const ImageDisplay = () => {
-  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
-  const [prompt, setPrompt] = useState<string | null>(null);
-  const [clothingItemUrl, setClothingItemUrl] = useState<string | null>(null);
-  const [modelGender, setModelGender] = useState<string | null>(null);
-  const [modelBodyType, setModelBodyType] = useState<string | null>(null);
-  const [modelAgeRange, setModelAgeRange] = useState<string | null>(null);
-  const [modelEthnicity, setModelEthnicity] = useState<string | null>(null);
-  const [environmentDescription, setEnvironmentDescription] = useState<string | null>(null);
-  const [lightingStyle, setLightingStyle] = useState<string | null>(null);
-  const [lensStyle, setLensStyle] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-    const [imageLoadError, setImageLoadError] = useState<boolean>(false);
+export default function ImageDisplay() {
+  const { originalImage, generatedImage, isLoading, error, generationProgress } = useGenerationStore();
+  const [originalLoaded, setOriginalLoaded] = useState(false);
+  const [generatedLoaded, setGeneratedLoaded] = useState(false);
 
-  const searchParams = useSearchParams();
+  const handleDownload = () => {
+    if (!generatedImage) return;
 
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
-    setImageLoadError(false);
+    // Create a temporary anchor element
+    const link = document.createElement('a');
+    link.href = generatedImage;
+    link.download = `styleai-generated-${Date.now()}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
-    // Retrieve data from local storage
-    const image = localStorage.getItem('generatedImageUrl');
-    const promptText = localStorage.getItem('prompt');
-    const clothingItem = localStorage.getItem('clothingItemUrl');
-    const gender = localStorage.getItem('modelGender');
-    const body = localStorage.getItem('modelBodyType');
-    const age = localStorage.getItem('modelAgeRange');
-    const ethnicity = localStorage.getItem('modelEthnicity');
-    const environment = localStorage.getItem('environmentDescription');
-    const lighting = localStorage.getItem('lightingStyle');
-    const lens = localStorage.getItem('lensStyle');
+  const handleShare = async () => {
+    if (!generatedImage || !navigator.share) return;
 
-    if (image && promptText && clothingItem && gender && body && age && ethnicity && environment && lighting && lens) {
-      setGeneratedImage(image);
-      setPrompt(promptText);
-      setClothingItemUrl(clothingItem);
-      setModelGender(gender);
-      setModelBodyType(body);
-      setModelAgeRange(age);
-      setModelEthnicity(ethnicity);
-      setEnvironmentDescription(environment);
-      setLightingStyle(lighting);
-      setLensStyle(lens);
-      setLoading(false);
-    } else {
-      setGeneratedImage(null);
-      setPrompt(null);
-      setClothingItemUrl(null);
-      setModelGender(null);
-      setModelBodyType(null);
-      setModelAgeRange(null);
-      setModelEthnicity(null);
-      setEnvironmentDescription(null);
-      setLightingStyle(null);
-      setLensStyle(null);
-      setLoading(false);
-      setError("No image generated yet. Customize your model and upload a clothing item to generate an image.");
+    try {
+      // Convert the data URL to a blob
+      const response = await fetch(generatedImage);
+      const blob = await response.blob();
+      const file = new File([blob], 'styleai-generated.png', { type: 'image/png' });
+
+      await navigator.share({
+        title: 'My StyleAI Generated Image',
+        text: 'Check out this outfit I generated with StyleAI!',
+        files: [file]
+      });
+    } catch (error) {
+      console.error('Error sharing:', error);
     }
-  }, []);
-
-    const handleImageLoadError = () => {
-        console.error("Error loading generated image.");
-        setImageLoadError(true);
-    };
-
-    // Retry loading the image after a delay
-    useEffect(() => {
-        if (imageLoadError && generatedImage) {
-            const retryTimeout = setTimeout(() => {
-                setImageLoadError(false);
-            }, 3000); // Retry after 3 seconds
-
-            return () => clearTimeout(retryTimeout);
-        }
-    }, [imageLoadError, generatedImage]);
+  };
 
   return (
-    <div className="mt-8">
-      <h2 className="text-lg font-semibold mb-4 text-center">Generated Image</h2>
-      {loading ? (
-        <Grid numColumns={2} className="gap-6">
-           <Card>
-            <CardHeader>
-              <CardTitle>Image</CardTitle>
-              <CardDescription>The loading indicator</CardDescription>
-            </CardHeader>
-             <CardContent>
-              <Skeleton className="w-full aspect-square" />
-             </CardContent>
-           </Card>
-           <Card>
-            <CardHeader>
-              <CardTitle>Prompt</CardTitle>
-              <CardDescription>The loading indicator</CardDescription>
-            </CardHeader>
-             <CardContent>
-              <Skeleton className="w-full h-20" />
-             </CardContent>
-           </Card>
-        </Grid>
-      ) : error ? (
-          <Alert variant="destructive">
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>
-                  {error}
-              </AlertDescription>
-          </Alert>
-      ) : generatedImage && prompt ? (
-        <Grid numColumns={2} className="gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Generated Image</CardTitle>
-            </CardHeader>
-            <CardContent>
-                {imageLoadError ? (
-                    <Alert variant="destructive">
-                        <AlertTitle>Error</AlertTitle>
-                        <AlertDescription>
-                            Failed to load the image. Retrying...
-                        </AlertDescription>
-                    </Alert>
-                ) : (
-                  <img
-                    src={generatedImage}
-                    alt="Generated"
-                    className="max-w-full h-auto rounded-md"
-                    onError={handleImageLoadError}
+    <div>
+      <h2 className="text-xl font-semibold mb-4">Results</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Original Image */}
+        <Card className="h-full">
+          <CardContent className="p-4">
+            <h3 className="text-lg font-medium mb-2">Original Item</h3>
+            <div className="relative aspect-square w-full overflow-hidden rounded-md bg-muted">
+              {originalImage ? (
+                <>
+                  {!originalLoaded && <Skeleton className="absolute inset-0" />}
+                  <Image
+                    src={originalImage}
+                    alt="Original clothing item"
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 50vw"
+                    className="object-contain"
+                    priority={true}
+                    onLoad={() => setOriginalLoaded(true)}
                   />
-                )}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Details</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p><b>Prompt:</b> {prompt}</p>
-              <p><b>Clothing URL:</b> {clothingItemUrl}</p>
-              <p><b>Gender:</b> {modelGender}</p>
-              <p><b>Body Type:</b> {modelBodyType}</p>
-              <p><b>Age Range:</b> {modelAgeRange}</p>
-              <p><b>Ethnicity:</b> {modelEthnicity}</p>
-              <p><b>Environment:</b> {environmentDescription}</p>
-              <p><b>Lighting:</b> {lightingStyle}</p>
-              <p><b>Lens Style:</b> {lensStyle}</p>
-            </CardContent>
-          </Card>
-        </Grid>
-      ) : (
-        <p className="text-center">No image generated yet. Customize your model and upload a clothing item to generate an image.</p>
-      )}
+                </>
+              ) : (
+                <div className="flex h-full items-center justify-center text-muted-foreground">
+                  No image uploaded
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Generated Image */}
+        <Card className="h-full flex flex-col">
+          <CardContent className="p-4 flex-grow">
+            <h3 className="text-lg font-medium mb-2">Generated Result</h3>
+            <div className="relative aspect-square w-full overflow-hidden rounded-md bg-muted">
+              {isLoading ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-6">
+                  <div className="h-12 w-12 mb-4 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                  <Progress value={generationProgress || 0} className="w-full mb-2" />
+                  <p className="text-sm text-center font-medium">
+                    Generating your image... {generationProgress ? `${generationProgress}%` : ''}
+                  </p>
+                  <p className="text-xs text-center text-muted-foreground mt-2">
+                    {generationProgress && generationProgress < 30 ? 'Analyzing clothing item...' :
+                     generationProgress && generationProgress < 60 ? 'Creating virtual model...' :
+                     generationProgress && generationProgress < 80 ? 'Applying style transfer...' :
+                     generationProgress && generationProgress >= 80 ? 'Finalizing image...' : ''}
+                  </p>
+                </div>
+              ) : error ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-destructive">
+                  <p className="text-center">
+                    Error: {error.message || 'Something went wrong'}
+                  </p>
+                </div>
+              ) : generatedImage ? (
+                <>
+                  {!generatedLoaded && <Skeleton className="absolute inset-0" />}
+                  <Image
+                    src={generatedImage}
+                    alt="Generated model wearing item"
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 50vw"
+                    className="object-contain"
+                    quality={90}
+                    onLoad={() => setGeneratedLoaded(true)}
+                  />
+                </>
+              ) : (
+                <div className="flex h-full items-center justify-center text-muted-foreground">
+                  <p className="text-center max-w-xs">
+                    Upload a clothing item and customize your model to generate an image
+                  </p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+
+          {generatedImage && !isLoading && (
+            <CardFooter className="px-4 pb-4 pt-0 flex justify-between">
+              <Button variant="outline" size="sm" onClick={handleDownload}>
+                <Download className="mr-2 h-4 w-4" /> Download
+              </Button>
+              {navigator.share && (
+                <Button variant="outline" size="sm" onClick={handleShare}>
+                  <Share className="mr-2 h-4 w-4" /> Share
+                </Button>
+              )}
+            </CardFooter>
+          )}
+        </Card>
+      </div>
     </div>
   );
-};
-
-export default ImageDisplay;
+}

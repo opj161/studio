@@ -1,60 +1,102 @@
-
 "use client";
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Grid } from "@/components/ui/grid";
-import { Button } from "@/components/ui/button";
-import { useRouter, useSearchParams } from 'next/navigation';
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { useEffect, useState } from 'react';
+import Image from 'next/image';
+import { useGenerationStore } from '@/lib/store';
+import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
-const GenerationHistory = () => {
-  const [history, setHistory] = useState<string[]>([]);
-  const router = useRouter();
-  const searchParams = useSearchParams();
+export default function GenerationHistory() {
+  const { history, setOriginalImage, setGeneratedImage, clearHistory } = useGenerationStore();
+  const [visibleItems, setVisibleItems] = useState<string[]>([]);
 
+  // Implement intersection observer for lazy loading
   useEffect(() => {
-    const storedHistory = localStorage.getItem('generationHistory');
-    if (storedHistory) {
-      setHistory(JSON.parse(storedHistory));
-    }
-  }, []);
+    if (typeof window === 'undefined') return;
 
-  const handleThumbnailClick = (imageUrl: string) => {
-    const newParams = new URLSearchParams(searchParams);
-    newParams.set('image', imageUrl);
-    newParams.set('prompt', localStorage.getItem(`prompt_${imageUrl}`) || '');
-    router.push(`/?${newParams.toString()}`);
-  };
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            setVisibleItems(prev => [...prev, entry.target.id]);
+          }
+        });
+      },
+      { rootMargin: '100px' }
+    );
 
-  const clearHistory = () => {
-    localStorage.removeItem('generationHistory');
-    setHistory([]);
-  };
+    const thumbnails = document.querySelectorAll('.history-thumbnail');
+    thumbnails.forEach(thumbnail => observer.observe(thumbnail));
+
+    return () => {
+      thumbnails.forEach(thumbnail => observer.unobserve(thumbnail));
+    };
+  }, [history]);
+
+  if (history.length === 0) {
+    return (
+      <div className="text-center py-8 flex flex-col items-center justify-center">
+        <p className="text-muted-foreground mb-2">No generation history yet</p>
+        <p className="text-xs text-muted-foreground max-w-xs">
+          Upload a clothing item and customize your model to generate images. Your history will appear here.
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <div className="mt-8">
+    <div className="mt-4">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold">Generation History</h2>
-        <Button onClick={clearHistory} variant="outline" size="sm">Clear History</Button>
+        <h3 className="text-lg font-medium">Previous Generations</h3>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={clearHistory}
+        >
+          Clear History
+        </Button>
       </div>
-      {history.length > 0 ? (
-        <ScrollArea className="h-[300px] w-full rounded-md border">
-            <Grid numColumns={5} className="gap-4 p-4">
-              {history.map((imageUrl, index) => (
-                <Card key={index} className="cursor-pointer" onClick={() => handleThumbnailClick(imageUrl)}>
-                  <CardContent className="p-2">
-                    <img src={imageUrl} alt={`Generated ${index}`} className="w-full h-auto rounded-md" />
-                  </CardContent>
-                </Card>
-              ))}
-            </Grid>
-          </ScrollArea>
-      ) : (
-        <p className="text-center">No generation history yet.</p>
-      )}
+
+      <ScrollArea className="h-[220px] w-full rounded-md border">
+        <div className="flex gap-4 p-4 overflow-x-auto">
+          {history.map((item) => (
+            <div
+              key={item.id}
+              id={item.id}
+              className="history-thumbnail flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
+              onClick={() => {
+                setOriginalImage(item.originalImage);
+                setGeneratedImage(item.generatedImage);
+              }}
+            >
+              <div className="relative w-40 h-40 rounded-md overflow-hidden border">
+                {visibleItems.includes(item.id) ? (
+                  <Image
+                    src={item.generatedImage}
+                    alt="Generated outfit"
+                    fill
+                    sizes="160px"
+                    className="object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-muted flex items-center justify-center">
+                    <span className="text-xs text-muted-foreground">Loading...</span>
+                  </div>
+                )}
+              </div>
+              <div className="mt-1 text-center">
+                <p className="text-xs font-medium truncate">
+                  Generation {history.length - history.indexOf(item)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {new Date(item.timestamp).toLocaleDateString()} {new Date(item.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </ScrollArea>
     </div>
   );
-};
-
-export default GenerationHistory;
+}

@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDropzone } from 'react-dropzone';
 import { FileImage, Upload } from 'lucide-react';
+import { useGenerationStore } from '@/lib/store';
 
 const ClothingUpload = () => {
   const [image, setImage] = useState<string | null>(null);
+  const { setOriginalImage } = useGenerationStore();
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
@@ -16,12 +18,20 @@ const ClothingUpload = () => {
 
     const reader = new FileReader();
     reader.onloadend = () => {
-      setImage(reader.result as string);
+      const imageUrl = reader.result as string;
+      setImage(imageUrl);
+      setOriginalImage(imageUrl);
     };
     reader.readAsDataURL(file);
-  }, []);
+  }, [setOriginalImage]);
 
-  const {getRootProps, getInputProps, isDragActive} = useDropzone({onDrop, accept: 'image/*'});
+  const {getRootProps, getInputProps, isDragActive} = useDropzone({onDrop, accept: {'image/*': ['.jpeg', '.jpg', '.png', '.gif', '.webp']}});
+
+  // Get the original image from the store
+  const { originalImage } = useGenerationStore();
+
+  // Use either the local state or the store value
+  const displayImage = image || originalImage;
 
   return (
     <div>
@@ -37,14 +47,17 @@ const ClothingUpload = () => {
             </div>
         }
       </div>
-      {image && (
+      {displayImage && (
         <div className="mt-4">
-          <img src={image} alt="Uploaded Clothing" className="max-w-full h-auto rounded-md" />
+          <img src={displayImage} alt="Uploaded Clothing" className="max-w-full h-auto rounded-md" />
         </div>
       )}
-      {!image && (
+      {!displayImage && (
         <div className="mt-4 text-center">
           <p className="text-sm text-muted-foreground">No image uploaded yet.</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Upload an image of a clothing item to get started. You can drag and drop or click to select a file.
+          </p>
         </div>
       )}
     </div>

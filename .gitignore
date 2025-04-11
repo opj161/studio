@@ -38,3 +38,9 @@ yarn-error.log*
 next-env.d.ts
 
 .genkit/*
+.aider*
+.env
+.cache/*
+.idx*/*
+.env
+package-lock.json
