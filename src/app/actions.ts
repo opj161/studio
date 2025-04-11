@@ -152,7 +152,9 @@ export async function generateClothingImage(input: GenerateClothingImageInput): 
     // Common models were like "gemini-pro-vision" for input, but generation might be different.
     // Let's assume a hypothetical multimodal model capable of image output.
     // If separate models are needed (one for understanding image, one for generating), adjust logic.
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" }); // <-- VERIFY THIS MODEL NAME
+    // !!! IMPORTANT: Verify "gemini-1.5-flash" is the correct and available model for image GENERATION via the API. !!!
+    // !!! Consult Google Cloud documentation for the appropriate model identifier. !!!
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     // --- Handle base64 Data URI or download URL ---
     let base64Image: string;
@@ -184,17 +186,18 @@ export async function generateClothingImage(input: GenerateClothingImageInput): 
     // --- End image handling ---
 
     // Create model and environment settings objects
+    // Zod validation ensures these types match ModelSettings/EnvironmentSettings interfaces
     const modelSettings: ModelSettings = {
-      gender: input.modelGender as any,
-      bodyType: input.modelBodyType as any,
-      ageRange: input.modelAgeRange as any,
-      ethnicity: input.modelEthnicity as any,
+      gender: input.modelGender,
+      bodyType: input.modelBodyType,
+      ageRange: input.modelAgeRange,
+      ethnicity: input.modelEthnicity,
     };
 
     const environmentSettings: EnvironmentSettings = {
       description: input.environmentDescription,
-      lighting: input.lightingStyle as any,
-      lensStyle: input.lensStyle as any,
+      lighting: input.lightingStyle,
+      lensStyle: input.lensStyle,
     };
 
     // Build a structured prompt using our PromptBuilder

@@ -136,7 +136,7 @@ const ModelCustomization = () => {
 
         // Add to history in the store
         addToHistory({
-          originalImage: clothingItemUrl,
+          originalImage: originalImage, // Use the correct variable from the store
           generatedImage: result.generatedImageUrl
         });
 
