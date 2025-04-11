@@ -80,8 +80,8 @@ const ModelCustomization = () => {
       // localStorage.setItem('lightingStyle', lighting); // REMOVE
       // localStorage.setItem('lensStyle', lens); // REMOVE
 
-      // Update progress (will be removed later)
-      setGenerationProgress(30);
+      // Remove progress update
+      // setGenerationProgress(30);
 
       // Call the generation function with originalImage (base64) from the store
       const result = await generateClothingImage({
@@ -123,7 +123,8 @@ const ModelCustomization = () => {
         });
       } else if (result.generatedImageUrl && result.promptUsed) {
         // Handle successful generation
-        setGenerationProgress(100); // Will be removed later
+        // Remove progress update
+        // setGenerationProgress(100);
 
         // Remove manual localStorage saving
         // localStorage.setItem('generatedImageUrl', result.generatedImageUrl); // REMOVE
