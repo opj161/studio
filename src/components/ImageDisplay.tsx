@@ -5,35 +5,50 @@ import { useState } from 'react';
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Download, Share, Undo } from 'lucide-react';
+import { Download, Share } from 'lucide-react'; // Removed Undo
 import { useGenerationStore } from '@/lib/store';
-import { Progress } from "@/components/ui/progress";
+// Remove Progress import
+// import { Progress } from "@/components/ui/progress";
 
 export default function ImageDisplay() {
-  const { originalImage, generatedImage, isLoading, error, generationProgress } = useGenerationStore();
+  // Remove generationProgress from store destructuring
+  const { originalImage, generatedImage, isLoading, error } = useGenerationStore();
   const [originalLoaded, setOriginalLoaded] = useState(false);
   const [generatedLoaded, setGeneratedLoaded] = useState(false);
 
   const handleDownload = () => {
     if (!generatedImage) return;
 
-    // Create a temporary anchor element
-    const link = document.createElement('a');
-    link.href = generatedImage;
-    link.download = `styleai-generated-${Date.now()}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      // Fetch the image data from the relative URL
+      const response = await fetch(generatedImage);
+      if (!response.ok) throw new Error('Failed to fetch image for download');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      // Create a temporary anchor element
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `styleai-generated-${Date.now()}.png`; // Suggest a filename
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url); // Clean up blob URL
+    } catch (error) {
+      console.error("Download failed:", error);
+      // Optionally show a toast message to the user
+    }
   };
 
   const handleShare = async () => {
     if (!generatedImage || !navigator.share) return;
 
     try {
-      // Convert the data URL to a blob
+      // Fetch the image data from the relative URL to create a Blob/File
       const response = await fetch(generatedImage);
+      if (!response.ok) throw new Error('Failed to fetch image for sharing');
       const blob = await response.blob();
-      const file = new File([blob], 'styleai-generated.png', { type: 'image/png' });
+      const file = new File([blob], 'styleai-generated.png', { type: blob.type || 'image/png' });
 
       await navigator.share({
         title: 'My StyleAI Generated Image',
@@ -83,20 +98,18 @@ export default function ImageDisplay() {
             <div className="relative aspect-square w-full overflow-hidden rounded-md bg-muted">
               {isLoading ? (
                 <div className="absolute inset-0 flex flex-col items-center justify-center p-6">
+                  {/* Simple Spinner */}
                   <div className="h-12 w-12 mb-4 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-                  <Progress value={generationProgress || 0} className="w-full mb-2" />
+                  {/* Remove Progress bar */}
+                  {/* <Progress value={generationProgress || 0} className="w-full mb-2" /> */}
                   <p className="text-sm text-center font-medium">
-                    Generating your image... {generationProgress ? `${generationProgress}%` : ''}
+                    Generating your image...
+                    {/* Remove percentage display */}
                   </p>
-                  <p className="text-xs text-center text-muted-foreground mt-2">
-                    {generationProgress && generationProgress < 30 ? 'Analyzing clothing item...' :
-                     generationProgress && generationProgress < 60 ? 'Creating virtual model...' :
-                     generationProgress && generationProgress < 80 ? 'Applying style transfer...' :
-                     generationProgress && generationProgress >= 80 ? 'Finalizing image...' : ''}
-                  </p>
+                  {/* Remove detailed progress text */}
                 </div>
               ) : error ? (
-                <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-destructive">
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-destructive text-center">
                   <p className="text-center">
                     Error: {error.message || 'Something went wrong'}
                   </p>

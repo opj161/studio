@@ -37,9 +37,20 @@ export const urlSchema = z.string().url({
   }
 );
 
-// Image URL validation with additional checks
-export const imageUrlSchema = urlSchema.refine(
+// Schema allowing HTTP(S) URLs or base64 image Data URIs
+export const imageUrlOrDataUriSchema = z.string().refine(
+  (val) => isDataURI(val) || /^(https?:\/\/)/.test(val),
+  { message: "Must be a valid URL starting with http(s):// or a base64 image Data URI" }
+).pipe(z.string().min(20, { message: "Input seems too short to be a valid URL or Data URI" })); // Basic length check
+
+// Image URL validation with additional checks (applied only if it's a URL)
+export const imageUrlSchema = imageUrlOrDataUriSchema.refine(
   (url) => {
+    // If it's a Data URI, skip the extension check
+    if (isDataURI(url)) {
+      return true;
+    }
+    // Otherwise, perform checks for URLs
     const lowerUrl = url.toLowerCase();
     return (
       lowerUrl.endsWith('.jpg') ||
@@ -61,7 +72,7 @@ export const imageUrlSchema = urlSchema.refine(
 
 // Generation input schema with detailed validation
 export const generateClothingImageInputSchema = z.object({
-  clothingItemUrl: imageUrlSchema,
+  clothingItemUrl: imageUrlOrDataUriSchema, // Use the schema that allows Data URI or URL
   modelGender: modelSettingsSchema.shape.gender,
   modelBodyType: modelSettingsSchema.shape.bodyType,
   modelAgeRange: modelSettingsSchema.shape.ageRange,

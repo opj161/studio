@@ -12,27 +12,19 @@ import { useGenerationStore } from "@/lib/store";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<string>('upload');
-  const { generatedImage, setGeneratedImage, setOriginalImage } = useGenerationStore();
+  // Get generatedImage state to potentially influence initial tab, but don't load manually
+  const { generatedImage } = useGenerationStore();
 
-  // Load all settings and images from localStorage on initial load
-  useEffect(() => {
-    const generatedImageUrl = localStorage.getItem('generatedImageUrl');
-    const originalImageUrl = localStorage.getItem('clothingItemUrl');
+  // Remove the useEffect for manual localStorage loading.
+  // Zustand's persist middleware handles hydration automatically.
 
-    // Load images if available
-    if (generatedImageUrl) {
-      setGeneratedImage(generatedImageUrl);
-    }
+  // Optional: Set initial tab based on hydrated state (might cause flicker, test needed)
+  // useEffect(() => {
+  //   if (generatedImage) {
+  //     setActiveTab('customize'); // Or keep 'upload' as default?
+  //   }
+  // }, [generatedImage]); // Run only when generatedImage changes after hydration
 
-    if (originalImageUrl) {
-      setOriginalImage(originalImageUrl);
-    }
-
-    // Set active tab based on state
-    if (generatedImageUrl && !originalImageUrl) {
-      setActiveTab('customize');
-    }
-  }, [setGeneratedImage, setOriginalImage]);
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       <Toaster />

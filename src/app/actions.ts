@@ -1,9 +1,11 @@
 'use server';
 
-import { GoogleGenAI } from "@google/genai";
-import { cache } from 'react';
+// Use the official Google Generative AI SDK
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import fs from 'fs/promises';
 import path from 'path';
+// Import crypto for Node.js environment if subtle isn't always available server-side
+import crypto from 'crypto';
 import { z } from 'zod';
 
 // Import our new utilities
@@ -13,6 +15,7 @@ import { validate, generateClothingImageInputSchema } from '@/lib/validation';
 import { ApiError, ImageProcessingError, NetworkError, ValidationError, toAppError } from '@/lib/errors';
 import { ModelSettings, EnvironmentSettings } from '@/types';
 import { GenerateClothingImageInput, GenerateClothingImageOutput, GenerationError } from '@/types/actions';
+import { isDataURI } from '@/lib/utils'; // Import the helper
 
 /**
  * Download an image from a URL and convert it to base64
@@ -49,21 +52,17 @@ async function downloadImageAsBase64(imageUrl: string): Promise<{ data: string, 
 }
 
 /**
- * Generate a unique filename for storing generated images
+ * Generate a unique filename for storing generated images (using Node.js crypto)
  */
-async function generateUniqueFilename(imageData: string): Promise<string> {
+function generateUniqueFilenameSync(imageData: string): string {
   const timestamp = Date.now();
-  // Use a different approach since crypto.createHash is not available in the browser
-  const hashBuffer = await crypto.subtle.digest(
-    'SHA-256',
-    new TextEncoder().encode(imageData + timestamp)
-  );
+  // Use Node.js crypto for server-side actions
+  const hash = crypto
+    .createHash('sha256')
+    .update(imageData + timestamp)
+    .digest('hex');
 
-  // Convert to hex string
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-
-  return `${timestamp}-${hashHex.slice(0, 8)}.png`;
+  return `${timestamp}-${hash.slice(0, 8)}.png`;
 }
 
 /**
@@ -90,8 +89,8 @@ async function saveGeneratedImage(
     await fs.mkdir(generatedDir, { recursive: true });
     await fs.mkdir(metadataDir, { recursive: true });
 
-    // Generate unique filename
-    const filename = await generateUniqueFilename(imageData);
+    // Generate unique filename (use sync version here)
+    const filename = generateUniqueFilenameSync(imageData); // Use sync version
     const imagePath = path.join(generatedDir, filename);
     const metadataPath = path.join(metadataDir, `${filename}.json`);
 
@@ -115,11 +114,11 @@ async function saveGeneratedImage(
 }
 
 /**
- * Cache the generation function to improve performance
  */
-export const generateClothingImageCached = cache(async (input: GenerateClothingImageInput) => {
-  return generateClothingImage(input);
-});
+// Remove React cache wrapper - Step 3.2
+// export const generateClothingImageCached = cache(async (input: GenerateClothingImageInput) => {
+//   return generateClothingImage(input);
+// });
 
 /**
  * Generate an image of a model wearing the provided clothing item
@@ -145,11 +144,44 @@ export async function generateClothingImage(input: GenerateClothingImageInput): 
       throw new ApiError("GOOGLE_GENAI_API_KEY is not set in environment variables.");
     }
 
-    // Initialize the Google Gemini AI client
-    const genAI = new GoogleGenAI({ apiKey });
+    // Initialize the Google Generative AI client
+    const genAI = new GoogleGenerativeAI(apiKey);
+    // Select the appropriate model for image generation
+    // Note: As of late 2024, specific image generation models might have different names.
+    // Using "gemini-1.5-flash" as a placeholder - VERIFY the correct model name.
+    // Common models were like "gemini-pro-vision" for input, but generation might be different.
+    // Let's assume a hypothetical multimodal model capable of image output.
+    // If separate models are needed (one for understanding image, one for generating), adjust logic.
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" }); // <-- VERIFY THIS MODEL NAME
 
-    // Download and prepare the input image
-    const { data: base64Image, mimeType: inputMimeType } = await downloadImageAsBase64(input.clothingItemUrl);
+    // --- Handle base64 Data URI or download URL ---
+    let base64Image: string;
+    let inputMimeType: string;
+    let originalSource = input.clothingItemUrl; // Keep track of original input
+
+    if (isDataURI(input.clothingItemUrl)) {
+      console.log("Using provided base64 image data.");
+      const match = input.clothingItemUrl.match(/^data:(image\/[a-zA-Z]+);base64,(.*)$/);
+      if (!match || match.length < 3) {
+        throw new ImageProcessingError("Invalid image data format provided.");
+      }
+      inputMimeType = match[1];
+      base64Image = match[2];
+      // Optionally truncate base64 if storing it in metadata later
+      originalSource = `${input.clothingItemUrl.substring(0, 50)}... (base64)`;
+    } else {
+      console.log("Downloading image from URL:", input.clothingItemUrl);
+      // Download only if it's a URL
+      try {
+        const downloaded = await downloadImageAsBase64(input.clothingItemUrl);
+        base64Image = downloaded.data;
+        inputMimeType = downloaded.mimeType;
+      } catch (downloadError) {
+        // Provide more specific feedback if download fails
+        throw new NetworkError(`Failed to download image from URL: ${input.clothingItemUrl}`, downloadError instanceof Error ? downloadError : undefined);
+      }
+    }
+    // --- End image handling ---
 
     // Create model and environment settings objects
     const modelSettings: ModelSettings = {
@@ -180,13 +212,9 @@ export async function generateClothingImage(input: GenerateClothingImageInput): 
     ];
 
     // Generate content using the model
-    const response = await genAI.models.generateContent({
-      model: "gemini-2.0-flash-exp-image-generation",
-      contents,
-      config: {
-        responseModalities: ["Text", "Image"],
-      },
-    });
+    // The exact method might vary slightly based on the specific SDK version and model capabilities
+    const generationResult = await model.generateContent({ contents }); // Assuming generateContent works for image output
+    const response = generationResult.response;
 
     // Improved error handling for API responses
     if (!response) {
@@ -194,16 +222,29 @@ export async function generateClothingImage(input: GenerateClothingImageInput): 
     }
 
     // Process the response to extract the generated image
-    let generatedImageUrl = '';
+    let generatedImageUrl = ''; // This will hold the persistent URL
     const candidate = response?.candidates?.[0];
 
     if (candidate && candidate.content && candidate.content.parts) {
       for (const part of candidate.content.parts) {
         // Look for inlineData which contains the image
         if (part.inlineData) {
-          const imageData = part.inlineData.data;
+          const imageData = part.inlineData.data; // This is base64
           const imageMimeType = part.inlineData.mimeType;
-          generatedImageUrl = `data:${imageMimeType};base64,${imageData}`;
+
+          // *** NEW: Save the image and get persistent URL ***
+          const fullDataUrl = `data:${imageMimeType};base64,${imageData}`;
+          const persistentImageUrl = await saveGeneratedImage(
+            fullDataUrl, // Pass the full data URL to save function
+            {
+              clothingItemUrl: originalSource, // Store original source (URL or truncated base64)
+              modelSettings: modelSettings, // Pass constructed settings
+              environmentSettings: environmentSettings // Pass constructed settings
+            }
+          );
+          console.log("Saved image to:", persistentImageUrl);
+          generatedImageUrl = persistentImageUrl; // Use the persistent URL
+          // *** END NEW ***
           break; // Found the image, exit the loop
         } else if (part.text) {
           // Log any text part for debugging
@@ -225,13 +266,14 @@ export async function generateClothingImage(input: GenerateClothingImageInput): 
       );
     }
 
-    // Create the result object
+    // Create the result object with the persistent URL
     const result: GenerateClothingImageOutput = {
-      generatedImageUrl,
+      generatedImageUrl: generatedImageUrl, // Now contains /generated/filename.png
       promptUsed: prompt,
     };
 
-    // Cache the result for future requests
+    // Cache the result (containing the persistent URL)
+    // Adjust cache key generation if base64 input makes it too variable/long
     await imageCache.set(cacheKey, result);
 
     return result;

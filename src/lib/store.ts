@@ -24,7 +24,8 @@ type GenerationState = {
   // UI state
   isLoading: boolean;
   error: { message: string } | null;
-  generationProgress: number | null;
+  // Remove generationProgress state
+  // generationProgress: number | null;
   // History (limited to prevent localStorage overflow)
   history: Array<{
     id: string;
@@ -39,7 +40,8 @@ type GenerationState = {
   setEnvironmentSettings: (settings: Partial<EnvironmentSettings>) => void;
   setLoading: (isLoading: boolean) => void;
   setError: (error: { message: string } | null) => void;
-  setGenerationProgress: (progress: number | null) => void;
+  // Remove setGenerationProgress action type
+  // setGenerationProgress: (progress: number | null) => void;
   addToHistory: (entry: { originalImage: string; generatedImage: string }) => void;
   clearHistory: () => void;
 };
@@ -63,7 +65,8 @@ export const useGenerationStore = create<GenerationState>()(
       },
       isLoading: false,
       error: null,
-      generationProgress: null,
+      // Remove initial generationProgress state
+      // generationProgress: null,
       history: [],
 
       // Actions
@@ -79,13 +82,15 @@ export const useGenerationStore = create<GenerationState>()(
         })),
       setLoading: (isLoading) => set({ isLoading }),
       setError: (error) => set({ error }),
-      setGenerationProgress: (progress) => set({ generationProgress: progress }),
-      addToHistory: (entry) =>
+      // Remove setGenerationProgress action implementation
+      // setGenerationProgress: (progress) => set({ generationProgress: progress }),
+      addToHistory: (entry: { originalImage: string; generatedImage: string }) =>
         set((state) => ({
           history: [
             {
               id: Date.now().toString(),
-              ...entry,
+              originalImage: entry.originalImage, // Store original source (URL or base64)
+              generatedImage: entry.generatedImage, // Store the persistent URL
               timestamp: Date.now(),
             },
             ...state.history,
