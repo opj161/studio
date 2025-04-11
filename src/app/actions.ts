@@ -1,10 +1,9 @@
 'use server';
 
-// Use the official Google GenAI SDK
-import { GoogleGenAI } from "@google/genai"; // Use @google/genai
+// Use the official Google Generative AI SDK
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import fs from 'fs/promises';
 import path from 'path';
-// Import crypto for Node.js environment if subtle isn't always available server-side
 import crypto from 'crypto';
 import { z } from 'zod';
 
@@ -142,12 +141,14 @@ export async function generateClothingImage(input: GenerateClothingImageInput): 
       throw new ApiError("GOOGLE_GENAI_API_KEY is not set in environment variables.");
     }
 
-    // Initialize the Google GenAI client using the correct package
-    const ai = new GoogleGenAI({ apiKey });
+    // Initialize the Google Generative AI client
+    const genAI = new GoogleGenerativeAI(apiKey);
 
     // Define the specific model for image generation
+    // !!! IMPORTANT: Verify this model name ("gemini-1.5-flash" or another) is correct and available for image GENERATION via the API. !!!
     // !!! Consult Google Cloud documentation for the appropriate model identifier. !!!
-    const modelIdentifier = "gemini-2.0-flash-exp-image-generation"; // Model from user's example
+    const modelIdentifier = "gemini-1.5-flash"; // Placeholder - VERIFY THIS
+    const model = genAI.getGenerativeModel({ model: modelIdentifier });
 
     // --- Handle base64 Data URI or download URL ---
     let inputBase64Image: string;
@@ -208,19 +209,14 @@ export async function generateClothingImage(input: GenerateClothingImageInput): 
     ];
 
     console.log(`Generating image with model: ${modelIdentifier}`);
-    // Generate content using the ai.models.generateContent method
-    const response = await ai.models.generateContent({
-      model: modelIdentifier, // Pass model string directly
-      contents: contents,     // Pass the simplified contents structure
-      config: {
-        responseModalities: ["Text", "Image"], // Specify expected output modalities
-      },
-    });
+    // Generate content using the model.generateContent method
+    const generationResult = await model.generateContent({ contents });
+    const response = generationResult.response; // Extract the response part
 
     // Improved error handling for API responses
     if (!response || !response.candidates || response.candidates.length === 0) {
        console.error("Invalid or empty response from AI service:", response);
-      throw new ApiError('The AI service returned an invalid or empty response object');
+      throw new ApiError('The AI service returned an invalid or empty response object', undefined, { response });
     }
 
     // Process the response to extract the generated image
