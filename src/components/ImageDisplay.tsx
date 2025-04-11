@@ -16,7 +16,7 @@ export default function ImageDisplay() {
   const [originalLoaded, setOriginalLoaded] = useState(false);
   const [generatedLoaded, setGeneratedLoaded] = useState(false);
 
-  const handleDownload = () => {
+  const handleDownload = async () => { // Add async keyword
     if (!generatedImage) return;
 
     try {
@@ -40,7 +40,7 @@ export default function ImageDisplay() {
     }
   };
 
-  const handleShare = async () => {
+  const handleShare = async () => { // Already async, but ensure it is
     if (!generatedImage || !navigator.share) return;
 
     try {

@@ -9,9 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { LoadingIndicator } from "@/components/ui/loading-indicator";
+// Keep only one import
 import { useGenerationStore } from "@/lib/store";
 
-import { useGenerationStore } from "@/lib/store";
 
 const ModelCustomization = () => {
   // Get model, environment settings, and originalImage from the store
