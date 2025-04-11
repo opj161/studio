@@ -1,103 +1,165 @@
+/* Import Tailwind CSS v4 */
+@import "tailwindcss";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/*
+ * Tailwind CSS v4 Theme Definition
+ * Define all theme tokens (colors, spacing, fonts, breakpoints, etc.) here.
+ * These replace the `theme.extend` section from tailwind.config.js/ts.
+ */
+@theme {
+  /* Breakpoints (Example - Add as needed) */
+  /* --breakpoint-sm: 640px; */
+  /* --breakpoint-md: 768px; */
+  /* --breakpoint-lg: 1024px; */
+  /* --breakpoint-xl: 1280px; */
 
-body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  /* Radii (from original config) */
+  --radius: 0.75rem;
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  /* Base Colors (Light Mode - from :root) */
+  --color-background: 220 14% 96%; /* Light Gray */
+  --color-foreground: 220 10% 39%; /* Dark Gray */
+  --color-card: 0 0% 100%;
+  --color-card-foreground: 222.2 84% 4.9%;
+  --color-popover: 0 0% 100%;
+  --color-popover-foreground: 222.2 84% 4.9%;
+  --color-primary: 220 76% 48%; /* Muted Blue */
+  --color-primary-foreground: 0 0% 100%;
+  --color-secondary: 210 22% 88%;
+  --color-secondary-foreground: 222.2 47.2% 11.2%;
+  --color-muted: 210 40% 96.1%;
+  --color-muted-foreground: 215.4 16.3% 46.9%;
+  --color-accent: 142 76% 36%; /* Teal */
+  --color-accent-foreground: 0 0% 100%;
+  --color-destructive: 0 63% 56%;
+  --color-destructive-foreground: 210 20% 98%;
+  --color-border: 214.3 31.8% 91.4%;
+  --color-input: 214.3 31.8% 91.4%;
+  --color-ring: 220 71% 59%;
+
+  /* Chart Colors */
+  --color-chart-1: 12 76% 61%;
+  --color-chart-2: 173 58% 39%;
+  --color-chart-3: 197 37% 24%;
+  --color-chart-4: 43 74% 66%;
+  --color-chart-5: 27 87% 67%;
+
+  /* Sidebar Colors (Light Mode) */
+  --color-sidebar-background: 0 0% 98%;
+  --color-sidebar-foreground: 240 5.3% 26.1%;
+  --color-sidebar-primary: 240 5.9% 10%;
+  --color-sidebar-primary-foreground: 0 0% 98%;
+  --color-sidebar-accent: 240 4.8% 95.9%;
+  --color-sidebar-accent-foreground: 240 5.9% 10%;
+  --color-sidebar-border: 220 13% 91%;
+  --color-sidebar-ring: 217.2 91.2% 59.8%;
+
+  /* Dark Mode Colors (Defined within .dark selector below for specificity) */
 }
 
+/* Base Layer - Apply foundational styles */
 @layer base {
-  :root {
-    --background: 220 14% 96%; /* Light Gray */
-    --foreground: 220 10% 39%; /* Dark Gray */
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 220 76% 48%; /* Muted Blue */
-    --primary-foreground: 0 0% 100%;
-    --secondary: 210 22% 88%;
-    --secondary-foreground: 222.2 47.2% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 142 76% 36%; /* Teal */
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 63% 56%;
-    --destructive-foreground: 210 20% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 220 71% 59%;
-    --radius: 0.75rem;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-  }
-
-  .dark {
-    --background: 215 14% 13%; /* Dark Gray */
-    --foreground: 210 20% 98%; /* Off-White */
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 20% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 20% 98%;
-    --primary: 220 76% 48%; /* Muted Blue */
-    --primary-foreground: 222.2 47.2% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 20% 98%;
-    --muted: 216 34% 17%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 142 76% 36%; /* Teal */
-    --accent-foreground: 210 20% 98%;
-    --destructive: 0 63% 56%;
-    --destructive-foreground: 210 20% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-        --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
+  /* Apply base variables for background/foreground */
   body {
     @apply bg-background text-foreground;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
+
+  /* Dark Mode Variable Overrides */
+  .dark {
+    --color-background: 215 14% 13%; /* Dark Gray */
+    --color-foreground: 210 20% 98%; /* Off-White */
+    --color-card: 222.2 84% 4.9%;
+    --color-card-foreground: 210 20% 98%;
+    --color-popover: 222.2 84% 4.9%;
+    --color-popover-foreground: 210 20% 98%;
+    /* --color-primary: 220 76% 48%; /* Muted Blue (Same as light?) */ */
+    /* --color-primary-foreground: 222.2 47.2% 11.2%; */
+    --color-secondary: 217.2 32.6% 17.5%;
+    --color-secondary-foreground: 210 20% 98%;
+    --color-muted: 216 34% 17%;
+    --color-muted-foreground: 215 20.2% 65.1%;
+    /* --color-accent: 142 76% 36%; /* Teal (Same as light?) */ */
+    /* --color-accent-foreground: 210 20% 98%; */
+    /* --color-destructive: 0 63% 56%; /* (Same as light?) */ */
+    /* --color-destructive-foreground: 210 20% 98%; */
+    --color-border: 217.2 32.6% 17.5%;
+    --color-input: 217.2 32.6% 17.5%;
+    --color-ring: 224.3 76.3% 48%;
+    /* Dark Chart Colors */
+    --color-chart-1: 220 70% 50%;
+    --color-chart-2: 160 60% 45%;
+    --color-chart-3: 30 80% 55%;
+    --color-chart-4: 280 65% 60%;
+    --color-chart-5: 340 75% 55%;
+    /* Dark Sidebar Colors */
+    --color-sidebar-background: 240 5.9% 10%;
+    --color-sidebar-foreground: 240 4.8% 95.9%;
+    --color-sidebar-primary: 224.3 76.3% 48%;
+    --color-sidebar-primary-foreground: 0 0% 100%;
+    --color-sidebar-accent: 240 3.7% 15.9%;
+    --color-sidebar-accent-foreground: 240 4.8% 95.9%;
+    --color-sidebar-border: 240 3.7% 15.9%;
+    --color-sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  /* --- Optional: Restore V3 Defaults (Uncomment if needed) --- */
+  /*
+  // Restore v3 default border color (gray-200) if components rely on it
+  *, ::before, ::after {
+    border-color: var(--color-border, currentColor); // Use variable if defined, else currentColor
+  }
+
+  // Restore v3 default placeholder color (gray-400)
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-muted-foreground); // Or specific gray like theme('colors.gray.400') equivalent var
+    opacity: 1;
+  }
+
+  // Restore v3 button cursor
+  button:not(:disabled), [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  // Restore v3 dialog margins
+  dialog {
+    margin: auto;
+  }
+  */
 }
 
-/* Custom styles for improved UI */
+/* Define Keyframes for Animations */
+@keyframes accordion-down {
+  from { height: 0; opacity: 0; }
+  to { height: var(--radix-accordion-content-height); opacity: 1; }
+}
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); opacity: 1; }
+  to { height: 0; opacity: 0; }
+}
+
+/* Define Custom Utilities using @utility */
+@utility animate-accordion-down {
+  animation: accordion-down 0.2s ease-out;
+}
+@utility animate-accordion-up {
+  animation: accordion-up 0.2s ease-out;
+}
+
+/* --- Custom Component Styles (Using @apply - Consider Refactoring Later) --- */
+/* These will now correctly use variables defined in @theme */
+/* For better v4 practice, consider using @utility or applying utilities directly in JSX */
 .container {
   @apply mx-auto px-4 py-8;
 }
 
 .form-container {
-  @apply bg-card rounded-lg shadow-md p-6;
+  @apply bg-card rounded-lg shadow-md p-6; /* shadow-md is unchanged */
 }
 
 .form-title {
@@ -112,16 +174,17 @@ body {
   @apply block text-sm font-medium text-foreground mb-2;
 }
 
+/* Example: If .form-input used default border, add explicit color */
 .form-input {
-  @apply shadow appearance-none border rounded w-full py-2 px-3 text-foreground leading-tight focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
+  @apply shadow appearance-none border border-input rounded-md w-full py-2 px-3 text-foreground leading-tight focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2; /* Changed focus:outline-none */
 }
 
 .button-primary {
-  @apply bg-primary hover:bg-primary/90 text-white font-bold py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
+  @apply bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-2 px-4 rounded focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2; /* Changed focus:outline-none */
 }
 
 .button-secondary {
-    @apply bg-secondary hover:bg-secondary/80 text-foreground font-bold py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
+  @apply bg-secondary hover:bg-secondary/80 text-secondary-foreground font-bold py-2 px-4 rounded focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2; /* Changed focus:outline-none */
 }
 
 .image-display {
@@ -129,7 +192,7 @@ body {
 }
 
 .image-display img {
-  @apply rounded-lg shadow-lg;
+  @apply rounded-lg shadow-lg; /* shadow-lg is unchanged */
 }
 
 .history-container {
@@ -152,7 +215,7 @@ body {
   @apply w-full h-auto;
 }
 
-/* Responsive Design */
+/* Responsive Design (Keep as is) */
 @media (max-width: 768px) {
   .history-grid {
     @apply grid-cols-2;
@@ -163,29 +226,4 @@ body {
   .history-grid {
     @apply grid-cols-1;
   }
-}
-
-/* Enhanced Styling with Tailwind Utilities */
-.rounded-full {
-    border-radius: 9999px;
-}
-
-.shadow-md {
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.shadow-lg {
-    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
-}
-
-.mt-8 {
-    margin-top: 2rem;
-}
-
-.mb-4 {
-    margin-bottom: 1rem;
-}
-
-.p-6 {
-    padding: 1.5rem;
 }

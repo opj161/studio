@@ -50,8 +50,6 @@ next.config.ts
 package.json
 postcss.config.mjs
 README.md
-src/ai/ai-instance.ts
-src/ai/flows/generate-clothing-image.ts
 src/app/actions.ts
 src/app/globals.css
 src/app/layout.tsx
@@ -113,837 +111,6 @@ tsconfig.json
 <files>
 This section contains the contents of the repository's files.
 
-<file path="src/components/ui/loading-indicator.tsx">
-"use client";
-
-import React from 'react';
-import { Loader2, AlertCircle } from 'lucide-react';
-import { cva, type VariantProps } from 'class-variance-authority';
-import { cn } from '@/lib/utils';
-
-const loadingVariants = cva(
-  "flex items-center gap-2 rounded-md p-2 text-sm font-medium",
-  {
-    variants: {
-      variant: {
-        default: "bg-secondary text-secondary-foreground",
-        primary: "bg-primary/10 text-primary",
-        destructive: "bg-destructive/10 text-destructive",
-      },
-      size: {
-        sm: "text-xs py-1 px-2",
-        default: "text-sm py-2 px-3",
-        lg: "text-base py-3 px-4",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-      size: "default",
-    },
-  }
-);
-
-export interface LoadingIndicatorProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof loadingVariants> {
-  status?: 'loading' | 'error' | 'success';
-  message?: string;
-  progress?: number; // 0-100
-}
-
-/**
- * Enhanced loading indicator component with support for different states and progress
- */
-export function LoadingIndicator({
-  className,
-  variant,
-  size,
-  status = 'loading',
-  message,
-  progress,
-  ...props
-}: LoadingIndicatorProps) {
-  return (
-    <div
-      className={cn(loadingVariants({ variant, size }), className)}
-      {...props}
-    >
-      {status === 'loading' && (
-        <Loader2 className="h-4 w-4 animate-spin" />
-      )}
-      
-      {status === 'error' && (
-        <AlertCircle className="h-4 w-4 text-destructive" />
-      )}
-      
-      <span>
-        {message || (
-          status === 'loading' 
-            ? 'Loading...' 
-            : status === 'error'
-              ? 'An error occurred'
-              : 'Completed'
-        )}
-      </span>
-      
-      {typeof progress === 'number' && progress >= 0 && progress <= 100 && (
-        <div className="ml-auto flex items-center gap-2">
-          <div className="h-1.5 w-16 overflow-hidden rounded-full bg-background">
-            <div 
-              className="h-full bg-primary transition-all duration-300 ease-in-out" 
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-          <span className="text-xs tabular-nums">{Math.round(progress)}%</span>
-        </div>
-      )}
-    </div>
-  );
-}
-</file>
-
-<file path="src/lib/cache-service.ts">
-/**
- * Cache service for storing and retrieving generated images
- * Provides TTL support, error handling, and consistent cache key generation
- */
-
-import fs from 'fs/promises';
-import path from 'path';
-import crypto from 'crypto';
-import { existsSync, mkdirSync } from 'fs';
-import { GenerateClothingImageInput, GenerateClothingImageOutput } from '@/app/actions';
-
-// Types for cache entries
-export interface CacheEntry<T> {
-  data: T;
-  timestamp: number;
-  expiresAt: number | null; // null means no expiration
-}
-
-// Cache configuration
-interface CacheConfig {
-  basePath: string;
-  defaultTTL: number | null; // in milliseconds, null means no expiration
-}
-
-// Default configuration
-const DEFAULT_CONFIG: CacheConfig = {
-  basePath: path.join(process.cwd(), '.cache'),
-  defaultTTL: 7 * 24 * 60 * 60 * 1000, // 1 week in milliseconds
-};
-
-/**
- * Service for caching generated images and related data
- */
-export class CacheService {
-  private config: CacheConfig;
-
-  constructor(config: Partial<CacheConfig> = {}) {
-    this.config = { ...DEFAULT_CONFIG, ...config };
-    
-    // Ensure cache directory exists
-    if (!existsSync(this.config.basePath)) {
-      mkdirSync(this.config.basePath, { recursive: true });
-    }
-  }
-
-  /**
-   * Generate a consistent cache key from input parameters
-   */
-  public createCacheKey(input: GenerateClothingImageInput): string {
-    const data = {
-      clothingUrl: input.clothingItemUrl,
-      model: {
-        gender: input.modelGender,
-        bodyType: input.modelBodyType,
-        ageRange: input.modelAgeRange,
-        ethnicity: input.modelEthnicity,
-      },
-      environment: {
-        description: input.environmentDescription,
-        lighting: input.lightingStyle,
-        lens: input.lensStyle,
-      }
-    };
-    
-    // Create a deterministic hash of the input data
-    return crypto
-      .createHash('md5')
-      .update(JSON.stringify(data))
-      .digest('hex');
-  }
-
-  /**
-   * Get the full path to a cache file
-   */
-  private getCachePath(key: string): string {
-    return path.join(this.config.basePath, `${key}.json`);
-  }
-
-  /**
-   * Store data in the cache with optional TTL
-   */
-  public async set<T>(
-    key: string, 
-    data: T, 
-    ttl: number | null = this.config.defaultTTL
-  ): Promise<void> {
-    try {
-      const cachePath = this.getCachePath(key);
-      const entry: CacheEntry<T> = {
-        data,
-        timestamp: Date.now(),
-        expiresAt: ttl ? Date.now() + ttl : null,
-      };
-      
-      await fs.writeFile(cachePath, JSON.stringify(entry), 'utf-8');
-    } catch (error) {
-      console.error(`Cache write error for key ${key}:`, error);
-      // Fail gracefully - don't throw errors for cache operations
-    }
-  }
-
-  /**
-   * Retrieve data from the cache if it exists and is not expired
-   */
-  public async get<T>(key: string): Promise<T | null> {
-    try {
-      const cachePath = this.getCachePath(key);
-      
-      // Check if cache file exists
-      try {
-        await fs.access(cachePath);
-      } catch {
-        return null; // File doesn't exist
-      }
-      
-      // Read and parse cache file
-      const data = await fs.readFile(cachePath, 'utf-8');
-      const entry = JSON.parse(data) as CacheEntry<T>;
-      
-      // Check if entry is expired
-      if (entry.expiresAt && entry.expiresAt < Date.now()) {
-        // Expired entry - delete it asynchronously and return null
-        fs.unlink(cachePath).catch(err => 
-          console.error(`Failed to delete expired cache entry ${key}:`, err)
-        );
-        return null;
-      }
-      
-      return entry.data;
-    } catch (error) {
-      console.error(`Cache read error for key ${key}:`, error);
-      return null; // Fail gracefully
-    }
-  }
-
-  /**
-   * Delete a cache entry
-   */
-  public async delete(key: string): Promise<boolean> {
-    try {
-      const cachePath = this.getCachePath(key);
-      await fs.unlink(cachePath);
-      return true;
-    } catch (error) {
-      console.error(`Cache delete error for key ${key}:`, error);
-      return false;
-    }
-  }
-
-  /**
-   * Clear all cache entries
-   */
-  public async clear(): Promise<boolean> {
-    try {
-      const files = await fs.readdir(this.config.basePath);
-      
-      await Promise.all(
-        files.map(file => 
-          fs.unlink(path.join(this.config.basePath, file))
-            .catch(err => console.error(`Failed to delete cache file ${file}:`, err))
-        )
-      );
-      
-      return true;
-    } catch (error) {
-      console.error('Cache clear error:', error);
-      return false;
-    }
-  }
-
-  /**
-   * Check if a cache entry exists and is not expired
-   */
-  public async has(key: string): Promise<boolean> {
-    const result = await this.get(key);
-    return result !== null;
-  }
-}
-
-// Export a singleton instance for use throughout the application
-export const imageCache = new CacheService({
-  basePath: path.join(process.cwd(), '.cache', 'images'),
-});
-</file>
-
-<file path="src/lib/errors.ts">
-/**
- * Custom error types for better error handling throughout the application
- */
-
-// Base application error
-export class AppError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'AppError';
-  }
-}
-
-// Validation errors
-export class ValidationError extends AppError {
-  constructor(
-    message: string,
-    public readonly field?: string,
-    public readonly details?: any
-  ) {
-    super(message);
-    this.name = 'ValidationError';
-  }
-}
-
-// API errors
-export class ApiError extends AppError {
-  constructor(
-    message: string,
-    public readonly statusCode?: number,
-    public readonly details?: any
-  ) {
-    super(message);
-    this.name = 'ApiError';
-  }
-}
-
-// Image processing errors
-export class ImageProcessingError extends AppError {
-  constructor(
-    message: string,
-    public readonly originalError?: Error
-  ) {
-    super(message);
-    this.name = 'ImageProcessingError';
-  }
-}
-
-// Network errors
-export class NetworkError extends AppError {
-  constructor(
-    message: string,
-    public readonly originalError?: Error
-  ) {
-    super(message);
-    this.name = 'NetworkError';
-  }
-}
-
-// Cache errors
-export class CacheError extends AppError {
-  constructor(
-    message: string,
-    public readonly cacheKey?: string,
-    public readonly originalError?: Error
-  ) {
-    super(message);
-    this.name = 'CacheError';
-  }
-}
-
-// AI model errors
-export class AIModelError extends AppError {
-  constructor(
-    message: string,
-    public readonly modelName?: string,
-    public readonly details?: any
-  ) {
-    super(message);
-    this.name = 'AIModelError';
-  }
-}
-
-// Helper function to convert unknown errors to AppError
-export function toAppError(error: unknown): AppError {
-  if (error instanceof AppError) {
-    return error;
-  }
-  
-  if (error instanceof Error) {
-    // Check for specific error types based on message or properties
-    if (error.message.includes('network') || error.message.includes('fetch')) {
-      return new NetworkError(error.message, error);
-    }
-    
-    if (error.message.includes('image') || error.message.includes('png') || 
-        error.message.includes('jpg') || error.message.includes('webp')) {
-      return new ImageProcessingError(error.message, error);
-    }
-    
-    // Default to generic AppError
-    return new AppError(error.message);
-  }
-  
-  // For non-Error objects
-  return new AppError(
-    typeof error === 'string' 
-      ? error 
-      : 'An unknown error occurred'
-  );
-}
-
-// Error response type for API responses
-export type ErrorResponse = {
-  code: string;
-  message: string;
-  details?: any;
-};
-</file>
-
-<file path="src/lib/prompt-builder.ts">
-/**
- * PromptBuilder - A utility for constructing well-structured prompts for the AI model
- * 
- * This helps create consistent, high-quality prompts that lead to better generation results.
- */
-
-import { ModelSettings, EnvironmentSettings } from '@/types';
-
-export class PromptBuilder {
-  private sections: string[] = [];
-  
-  constructor() {
-    // Initialize with system context
-    this.addSystemContext();
-  }
-
-  /**
-   * Add system context to help guide the AI model
-   */
-  private addSystemContext(): this {
-    this.sections.push(
-      "Generate a photorealistic image of a virtual model wearing the provided clothing item with the following specifications:"
-    );
-    return this;
-  }
-
-  /**
-   * Add model attributes section
-   */
-  public addModelAttributes(settings: ModelSettings): this {
-    this.sections.push(
-      "Model Attributes:",
-      `- Gender: ${settings.gender}`,
-      `- Body Type: ${settings.bodyType}`,
-      `- Age Range: ${settings.ageRange}`,
-      `- Ethnicity: ${settings.ethnicity}`
-    );
-    return this;
-  }
-
-  /**
-   * Add environment settings section
-   */
-  public addEnvironmentSettings(settings: EnvironmentSettings): this {
-    this.sections.push(
-      "Environment Settings:",
-      `- Background: ${settings.description}`,
-      `- Lighting: ${settings.lighting}`,
-      `- Lens Style: ${settings.lensStyle}`
-    );
-    return this;
-  }
-
-  /**
-   * Add specific instructions for the AI model
-   */
-  public addInstructions(): this {
-    this.sections.push(
-      "Instructions:",
-      "- Create a photorealistic image that clearly shows the model wearing the provided clothing item",
-      "- Ensure the clothing item is clearly visible and properly fitted to the model",
-      "- Maintain natural proportions and realistic lighting",
-      "- The model should be in a natural pose that showcases the clothing item well",
-      "- The image should be high quality and suitable for e-commerce use"
-    );
-    return this;
-  }
-
-  /**
-   * Add custom section to the prompt
-   */
-  public addCustomSection(title: string, lines: string[]): this {
-    this.sections.push(title, ...lines.map(line => `- ${line}`));
-    return this;
-  }
-
-  /**
-   * Build the final prompt string
-   */
-  public build(): string {
-    return this.sections.join('\n\n');
-  }
-
-  /**
-   * Create a complete prompt from model and environment settings
-   */
-  public static createPrompt(
-    modelSettings: ModelSettings,
-    environmentSettings: EnvironmentSettings
-  ): string {
-    return new PromptBuilder()
-      .addModelAttributes(modelSettings)
-      .addEnvironmentSettings(environmentSettings)
-      .addInstructions()
-      .build();
-  }
-}
-</file>
-
-<file path="src/lib/store.ts">
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-
-type ModelSettings = {
-  gender: string;
-  bodyType: string;
-  ageRange: string;
-  ethnicity: string;
-};
-
-type EnvironmentSettings = {
-  description: string;
-  lighting: string;
-  lensStyle: string;
-};
-
-type GenerationState = {
-  // Images
-  originalImage: string | null;
-  generatedImage: string | null;
-  // Settings
-  modelSettings: ModelSettings;
-  environmentSettings: EnvironmentSettings;
-  // UI state
-  isLoading: boolean;
-  error: { message: string } | null;
-  generationProgress: number | null;
-  // History (limited to prevent localStorage overflow)
-  history: Array<{
-    id: string;
-    originalImage: string;
-    generatedImage: string;
-    timestamp: number;
-  }>;
-  // Actions
-  setOriginalImage: (url: string) => void;
-  setGeneratedImage: (url: string) => void;
-  setModelSettings: (settings: Partial<ModelSettings>) => void;
-  setEnvironmentSettings: (settings: Partial<EnvironmentSettings>) => void;
-  setLoading: (isLoading: boolean) => void;
-  setError: (error: { message: string } | null) => void;
-  setGenerationProgress: (progress: number | null) => void;
-  addToHistory: (entry: { originalImage: string; generatedImage: string }) => void;
-  clearHistory: () => void;
-};
-
-export const useGenerationStore = create<GenerationState>()(
-  persist(
-    (set) => ({
-      // Initial state
-      originalImage: null,
-      generatedImage: null,
-      modelSettings: {
-        gender: 'female',
-        bodyType: 'average',
-        ageRange: '25-35',
-        ethnicity: 'caucasian',
-      },
-      environmentSettings: {
-        description: 'studio with white background',
-        lighting: 'soft',
-        lensStyle: 'portrait',
-      },
-      isLoading: false,
-      error: null,
-      generationProgress: null,
-      history: [],
-
-      // Actions
-      setOriginalImage: (url) => set({ originalImage: url }),
-      setGeneratedImage: (url) => set({ generatedImage: url }),
-      setModelSettings: (settings) =>
-        set((state) => ({
-          modelSettings: { ...state.modelSettings, ...settings }
-        })),
-      setEnvironmentSettings: (settings) =>
-        set((state) => ({
-          environmentSettings: { ...state.environmentSettings, ...settings }
-        })),
-      setLoading: (isLoading) => set({ isLoading }),
-      setError: (error) => set({ error }),
-      setGenerationProgress: (progress) => set({ generationProgress: progress }),
-      addToHistory: (entry) =>
-        set((state) => ({
-          history: [
-            {
-              id: Date.now().toString(),
-              ...entry,
-              timestamp: Date.now(),
-            },
-            ...state.history,
-          ].slice(0, 20), // Limit to 20 entries
-        })),
-      clearHistory: () => set({ history: [] }),
-    }),
-    {
-      name: 'styleai-storage',
-      // Only persist these keys to avoid localStorage overflow
-      partialize: (state) => ({
-        modelSettings: state.modelSettings,
-        environmentSettings: state.environmentSettings,
-        history: state.history,
-      }),
-    }
-  )
-);
-</file>
-
-<file path="src/lib/validation.ts">
-/**
- * Validation schemas and utilities for input validation
- */
-
-import { z } from 'zod';
-import { ValidationError } from './errors';
-
-// Base model settings schema
-export const modelSettingsSchema = z.object({
-  gender: z.enum(['male', 'female', 'non-binary']),
-  bodyType: z.enum(['slim', 'athletic', 'average', 'plus-size']),
-  ageRange: z.enum(['18-25', '26-35', '36-45', '46-60', '60+']),
-  ethnicity: z.enum(['caucasian', 'black', 'asian', 'hispanic', 'middle-eastern', 'mixed']),
-});
-
-// Environment settings schema
-export const environmentSettingsSchema = z.object({
-  description: z.string().min(3).max(200),
-  lighting: z.enum(['natural', 'studio', 'soft', 'dramatic', 'bright']),
-  lensStyle: z.enum(['portrait', 'fashion', 'product', 'editorial', 'casual']),
-});
-
-// URL validation schema with better error messages
-export const urlSchema = z.string().url({
-  message: "Please enter a valid URL starting with http:// or https://",
-}).refine(
-  (url) => {
-    try {
-      new URL(url);
-      return true;
-    } catch {
-      return false;
-    }
-  },
-  {
-    message: "The URL format is invalid",
-  }
-);
-
-// Image URL validation with additional checks
-export const imageUrlSchema = urlSchema.refine(
-  (url) => {
-    const lowerUrl = url.toLowerCase();
-    return (
-      lowerUrl.endsWith('.jpg') ||
-      lowerUrl.endsWith('.jpeg') ||
-      lowerUrl.endsWith('.png') ||
-      lowerUrl.endsWith('.webp') ||
-      lowerUrl.endsWith('.gif') ||
-      lowerUrl.includes('image') ||
-      // Allow URLs that might be image APIs without extensions
-      lowerUrl.includes('picsum') ||
-      lowerUrl.includes('pngimg') ||
-      lowerUrl.includes('placeholder')
-    );
-  },
-  {
-    message: "The URL doesn't appear to be an image. Please provide a direct link to an image file.",
-  }
-);
-
-// Generation input schema with detailed validation
-export const generateClothingImageInputSchema = z.object({
-  clothingItemUrl: imageUrlSchema,
-  modelGender: modelSettingsSchema.shape.gender,
-  modelBodyType: modelSettingsSchema.shape.bodyType,
-  modelAgeRange: modelSettingsSchema.shape.ageRange,
-  modelEthnicity: modelSettingsSchema.shape.ethnicity,
-  environmentDescription: environmentSettingsSchema.shape.description,
-  lightingStyle: environmentSettingsSchema.shape.lighting,
-  lensStyle: environmentSettingsSchema.shape.lensStyle,
-});
-
-// Helper function to validate with better error handling
-export function validate<T>(schema: z.ZodSchema<T>, data: unknown): T {
-  try {
-    return schema.parse(data);
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      // Get the first error for a cleaner user experience
-      const firstError = error.errors[0];
-      const field = firstError.path.join('.');
-      throw new ValidationError(
-        firstError.message,
-        field,
-        error.errors
-      );
-    }
-    throw error;
-  }
-}
-
-// Validate image URL specifically
-export function validateImageUrl(url: string): string {
-  return validate(imageUrlSchema, url);
-}
-</file>
-
-<file path="src/types/actions.ts">
-import { z } from 'zod';
-import { generateClothingImageInputSchema } from '@/lib/validation';
-
-// Input type for the generateClothingImage function
-export type GenerateClothingImageInput = {
-  clothingItemUrl: string;
-  modelGender: string;
-  modelBodyType: string;
-  modelAgeRange: string;
-  modelEthnicity: string;
-  environmentDescription: string;
-  lightingStyle: string;
-  lensStyle: string;
-};
-
-// Output type for the generateClothingImage function
-export type GenerateClothingImageOutput = {
-  generatedImageUrl: string; // Data URL of the generated image
-  promptUsed: string;
-};
-
-// Error response type
-export type GenerationError = {
-  code: 'API_ERROR' | 'VALIDATION_ERROR' | 'PROCESSING_ERROR' | 'NETWORK_ERROR';
-  message: string;
-  details?: any;
-};
-</file>
-
-<file path="src/types/index.ts">
-/**
- * Common types used throughout the application
- */
-
-// Model settings
-export interface ModelSettings {
-  gender: 'male' | 'female' | 'non-binary';
-  bodyType: 'slim' | 'athletic' | 'average' | 'plus-size';
-  ageRange: '18-25' | '26-35' | '36-45' | '46-60' | '60+';
-  ethnicity: 'caucasian' | 'black' | 'asian' | 'hispanic' | 'middle-eastern' | 'mixed';
-}
-
-// Environment settings
-export interface EnvironmentSettings {
-  description: string;
-  lighting: 'natural' | 'studio' | 'soft' | 'dramatic' | 'bright';
-  lensStyle: 'portrait' | 'fashion' | 'product' | 'editorial' | 'casual';
-}
-
-// Generation result
-export interface GenerationResult {
-  originalImageUrl: string;
-  generatedImageUrl: string;
-  promptUsed: string;
-  timestamp: number;
-  modelSettings: ModelSettings;
-  environmentSettings: EnvironmentSettings;
-}
-
-// API response types
-export interface ApiResponse<T> {
-  data?: T;
-  error?: {
-    code: string;
-    message: string;
-    details?: any;
-  };
-}
-
-// Generation history entry
-export interface HistoryEntry {
-  id: string;
-  originalImage: string;
-  generatedImage: string;
-  timestamp: number;
-  modelSettings?: ModelSettings;
-  environmentSettings?: EnvironmentSettings;
-}
-</file>
-
-<file path=".gitignore">
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
-
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-
-.genkit/*
-.aider*
-.env
-.cache/*
-.idx*/*
-</file>
-
 <file path="components.json">
 {
   "$schema": "https://ui.shadcn.com/schema.json",
@@ -992,17 +159,6 @@ next-env.d.ts
 An web application that allows users to upload an image of a single clothing item. They can then customize virtual model attributes (gender, body type, age range, ethnicity) and environment settings (background preset or custom description, lighting, lens/style).
 Upon clicking 'Generate', the application sends the uploaded image (as base64 data) and selected settings to a backend service. The backend constructs a prompt, uses an AI (specifically Google Gemini per the PRD) with multimodal input (image + text prompt) to generate a new image depicting the customized model wearing the provided clothing item in the specified environment.
 The generated image is then displayed alongside the original upload for comparison, and the prompt used is shown. Successfully generated images are stored persistently on the server's local filesystem, with metadata saved in a local JSON file. A history of recent generations (relative image URLs) is maintained in the user's browser local storage, displayed as a clickable thumbnail gallery. The application is designed as a single-page app for anonymous users in its V1 implementation.
-</file>
-
-<file path="postcss.config.mjs">
-/** @type {import('postcss-load-config').Config} */
-const config = {
-  plugins: {
-    tailwindcss: {},
-  },
-};
-
-export default config;
 </file>
 
 <file path="README.md">
@@ -2617,6 +1773,95 @@ const Label = React.forwardRef<
 Label.displayName = LabelPrimitive.Root.displayName
 
 export { Label }
+</file>
+
+<file path="src/components/ui/loading-indicator.tsx">
+"use client";
+
+import React from 'react';
+import { Loader2, AlertCircle } from 'lucide-react';
+import { cva, type VariantProps } from 'class-variance-authority';
+import { cn } from '@/lib/utils';
+
+const loadingVariants = cva(
+  "flex items-center gap-2 rounded-md p-2 text-sm font-medium",
+  {
+    variants: {
+      variant: {
+        default: "bg-secondary text-secondary-foreground",
+        primary: "bg-primary/10 text-primary",
+        destructive: "bg-destructive/10 text-destructive",
+      },
+      size: {
+        sm: "text-xs py-1 px-2",
+        default: "text-sm py-2 px-3",
+        lg: "text-base py-3 px-4",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  }
+);
+
+export interface LoadingIndicatorProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof loadingVariants> {
+  status?: 'loading' | 'error' | 'success';
+  message?: string;
+  progress?: number; // 0-100
+}
+
+/**
+ * Enhanced loading indicator component with support for different states and progress
+ */
+export function LoadingIndicator({
+  className,
+  variant,
+  size,
+  status = 'loading',
+  message,
+  progress,
+  ...props
+}: LoadingIndicatorProps) {
+  return (
+    <div
+      className={cn(loadingVariants({ variant, size }), className)}
+      {...props}
+    >
+      {status === 'loading' && (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      )}
+      
+      {status === 'error' && (
+        <AlertCircle className="h-4 w-4 text-destructive" />
+      )}
+      
+      <span>
+        {message || (
+          status === 'loading' 
+            ? 'Loading...' 
+            : status === 'error'
+              ? 'An error occurred'
+              : 'Completed'
+        )}
+      </span>
+      
+      {typeof progress === 'number' && progress >= 0 && progress <= 100 && (
+        <div className="ml-auto flex items-center gap-2">
+          <div className="h-1.5 w-16 overflow-hidden rounded-full bg-background">
+            <div 
+              className="h-full bg-primary transition-all duration-300 ease-in-out" 
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <span className="text-xs tabular-nums">{Math.round(progress)}%</span>
+        </div>
+      )}
+    </div>
+  );
+}
 </file>
 
 <file path="src/components/ui/menubar.tsx">
@@ -4852,12 +4097,460 @@ function useToast() {
 export { useToast, toast }
 </file>
 
-<file path="src/lib/utils.ts">
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
+<file path="src/lib/cache-service.ts">
+/**
+ * Cache service for storing and retrieving generated images
+ * Provides TTL support, error handling, and consistent cache key generation
+ */
 
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+import fs from 'fs/promises';
+import path from 'path';
+import crypto from 'crypto';
+import { existsSync, mkdirSync } from 'fs';
+import { GenerateClothingImageInput, GenerateClothingImageOutput } from '@/app/actions';
+
+// Types for cache entries
+export interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+  expiresAt: number | null; // null means no expiration
+}
+
+// Cache configuration
+interface CacheConfig {
+  basePath: string;
+  defaultTTL: number | null; // in milliseconds, null means no expiration
+}
+
+// Default configuration
+const DEFAULT_CONFIG: CacheConfig = {
+  basePath: path.join(process.cwd(), '.cache'),
+  defaultTTL: 7 * 24 * 60 * 60 * 1000, // 1 week in milliseconds
+};
+
+/**
+ * Service for caching generated images and related data
+ */
+export class CacheService {
+  private config: CacheConfig;
+
+  constructor(config: Partial<CacheConfig> = {}) {
+    this.config = { ...DEFAULT_CONFIG, ...config };
+    
+    // Ensure cache directory exists
+    if (!existsSync(this.config.basePath)) {
+      mkdirSync(this.config.basePath, { recursive: true });
+    }
+  }
+
+  /**
+   * Generate a consistent cache key from input parameters
+   */
+  public createCacheKey(input: GenerateClothingImageInput): string {
+    const data = {
+      clothingUrl: input.clothingItemUrl,
+      model: {
+        gender: input.modelGender,
+        bodyType: input.modelBodyType,
+        ageRange: input.modelAgeRange,
+        ethnicity: input.modelEthnicity,
+      },
+      environment: {
+        description: input.environmentDescription,
+        lighting: input.lightingStyle,
+        lens: input.lensStyle,
+      }
+    };
+    
+    // Create a deterministic hash of the input data
+    return crypto
+      .createHash('md5')
+      .update(JSON.stringify(data))
+      .digest('hex');
+  }
+
+  /**
+   * Get the full path to a cache file
+   */
+  private getCachePath(key: string): string {
+    return path.join(this.config.basePath, `${key}.json`);
+  }
+
+  /**
+   * Store data in the cache with optional TTL
+   */
+  public async set<T>(
+    key: string, 
+    data: T, 
+    ttl: number | null = this.config.defaultTTL
+  ): Promise<void> {
+    try {
+      const cachePath = this.getCachePath(key);
+      const entry: CacheEntry<T> = {
+        data,
+        timestamp: Date.now(),
+        expiresAt: ttl ? Date.now() + ttl : null,
+      };
+      
+      await fs.writeFile(cachePath, JSON.stringify(entry), 'utf-8');
+    } catch (error) {
+      console.error(`Cache write error for key ${key}:`, error);
+      // Fail gracefully - don't throw errors for cache operations
+    }
+  }
+
+  /**
+   * Retrieve data from the cache if it exists and is not expired
+   */
+  public async get<T>(key: string): Promise<T | null> {
+    try {
+      const cachePath = this.getCachePath(key);
+      
+      // Check if cache file exists
+      try {
+        await fs.access(cachePath);
+      } catch {
+        return null; // File doesn't exist
+      }
+      
+      // Read and parse cache file
+      const data = await fs.readFile(cachePath, 'utf-8');
+      const entry = JSON.parse(data) as CacheEntry<T>;
+      
+      // Check if entry is expired
+      if (entry.expiresAt && entry.expiresAt < Date.now()) {
+        // Expired entry - delete it asynchronously and return null
+        fs.unlink(cachePath).catch(err => 
+          console.error(`Failed to delete expired cache entry ${key}:`, err)
+        );
+        return null;
+      }
+      
+      return entry.data;
+    } catch (error) {
+      console.error(`Cache read error for key ${key}:`, error);
+      return null; // Fail gracefully
+    }
+  }
+
+  /**
+   * Delete a cache entry
+   */
+  public async delete(key: string): Promise<boolean> {
+    try {
+      const cachePath = this.getCachePath(key);
+      await fs.unlink(cachePath);
+      return true;
+    } catch (error) {
+      console.error(`Cache delete error for key ${key}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Clear all cache entries
+   */
+  public async clear(): Promise<boolean> {
+    try {
+      const files = await fs.readdir(this.config.basePath);
+      
+      await Promise.all(
+        files.map(file => 
+          fs.unlink(path.join(this.config.basePath, file))
+            .catch(err => console.error(`Failed to delete cache file ${file}:`, err))
+        )
+      );
+      
+      return true;
+    } catch (error) {
+      console.error('Cache clear error:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Check if a cache entry exists and is not expired
+   */
+  public async has(key: string): Promise<boolean> {
+    const result = await this.get(key);
+    return result !== null;
+  }
+}
+
+// Export a singleton instance for use throughout the application
+export const imageCache = new CacheService({
+  basePath: path.join(process.cwd(), '.cache', 'images'),
+});
+</file>
+
+<file path="src/lib/errors.ts">
+/**
+ * Custom error types for better error handling throughout the application
+ */
+
+// Base application error
+export class AppError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AppError';
+  }
+}
+
+// Validation errors
+export class ValidationError extends AppError {
+  constructor(
+    message: string,
+    public readonly field?: string,
+    public readonly details?: any
+  ) {
+    super(message);
+    this.name = 'ValidationError';
+  }
+}
+
+// API errors
+export class ApiError extends AppError {
+  constructor(
+    message: string,
+    public readonly statusCode?: number,
+    public readonly details?: any
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+// Image processing errors
+export class ImageProcessingError extends AppError {
+  constructor(
+    message: string,
+    public readonly originalError?: Error
+  ) {
+    super(message);
+    this.name = 'ImageProcessingError';
+  }
+}
+
+// Network errors
+export class NetworkError extends AppError {
+  constructor(
+    message: string,
+    public readonly originalError?: Error
+  ) {
+    super(message);
+    this.name = 'NetworkError';
+  }
+}
+
+// Cache errors
+export class CacheError extends AppError {
+  constructor(
+    message: string,
+    public readonly cacheKey?: string,
+    public readonly originalError?: Error
+  ) {
+    super(message);
+    this.name = 'CacheError';
+  }
+}
+
+// AI model errors
+export class AIModelError extends AppError {
+  constructor(
+    message: string,
+    public readonly modelName?: string,
+    public readonly details?: any
+  ) {
+    super(message);
+    this.name = 'AIModelError';
+  }
+}
+
+// Helper function to convert unknown errors to AppError
+export function toAppError(error: unknown): AppError {
+  if (error instanceof AppError) {
+    return error;
+  }
+  
+  if (error instanceof Error) {
+    // Check for specific error types based on message or properties
+    if (error.message.includes('network') || error.message.includes('fetch')) {
+      return new NetworkError(error.message, error);
+    }
+    
+    if (error.message.includes('image') || error.message.includes('png') || 
+        error.message.includes('jpg') || error.message.includes('webp')) {
+      return new ImageProcessingError(error.message, error);
+    }
+    
+    // Default to generic AppError
+    return new AppError(error.message);
+  }
+  
+  // For non-Error objects
+  return new AppError(
+    typeof error === 'string' 
+      ? error 
+      : 'An unknown error occurred'
+  );
+}
+
+// Error response type for API responses
+export type ErrorResponse = {
+  code: string;
+  message: string;
+  details?: any;
+};
+</file>
+
+<file path="src/lib/prompt-builder.ts">
+/**
+ * PromptBuilder - A utility for constructing well-structured prompts for the AI model
+ * 
+ * This helps create consistent, high-quality prompts that lead to better generation results.
+ */
+
+import { ModelSettings, EnvironmentSettings } from '@/types';
+
+export class PromptBuilder {
+  private sections: string[] = [];
+  
+  constructor() {
+    // Initialize with system context
+    this.addSystemContext();
+  }
+
+  /**
+   * Add system context to help guide the AI model
+   */
+  private addSystemContext(): this {
+    this.sections.push(
+      "Generate a photorealistic image of a virtual model wearing the provided clothing item with the following specifications:"
+    );
+    return this;
+  }
+
+  /**
+   * Add model attributes section
+   */
+  public addModelAttributes(settings: ModelSettings): this {
+    this.sections.push(
+      "Model Attributes:",
+      `- Gender: ${settings.gender}`,
+      `- Body Type: ${settings.bodyType}`,
+      `- Age Range: ${settings.ageRange}`,
+      `- Ethnicity: ${settings.ethnicity}`
+    );
+    return this;
+  }
+
+  /**
+   * Add environment settings section
+   */
+  public addEnvironmentSettings(settings: EnvironmentSettings): this {
+    this.sections.push(
+      "Environment Settings:",
+      `- Background: ${settings.description}`,
+      `- Lighting: ${settings.lighting}`,
+      `- Lens Style: ${settings.lensStyle}`
+    );
+    return this;
+  }
+
+  /**
+   * Add specific instructions for the AI model
+   */
+  public addInstructions(): this {
+    this.sections.push(
+      "Instructions:",
+      "- Create a photorealistic image that clearly shows the model wearing the provided clothing item",
+      "- Ensure the clothing item is clearly visible and properly fitted to the model",
+      "- Maintain natural proportions and realistic lighting",
+      "- The model should be in a natural pose that showcases the clothing item well",
+      "- The image should be high quality and suitable for e-commerce use"
+    );
+    return this;
+  }
+
+  /**
+   * Add custom section to the prompt
+   */
+  public addCustomSection(title: string, lines: string[]): this {
+    this.sections.push(title, ...lines.map(line => `- ${line}`));
+    return this;
+  }
+
+  /**
+   * Build the final prompt string
+   */
+  public build(): string {
+    return this.sections.join('\n\n');
+  }
+
+  /**
+   * Create a complete prompt from model and environment settings
+   */
+  public static createPrompt(
+    modelSettings: ModelSettings,
+    environmentSettings: EnvironmentSettings
+  ): string {
+    return new PromptBuilder()
+      .addModelAttributes(modelSettings)
+      .addEnvironmentSettings(environmentSettings)
+      .addInstructions()
+      .build();
+  }
+}
+</file>
+
+<file path="src/types/index.ts">
+/**
+ * Common types used throughout the application
+ */
+
+// Model settings
+export interface ModelSettings {
+  gender: 'male' | 'female' | 'non-binary';
+  bodyType: 'slim' | 'athletic' | 'average' | 'plus-size';
+  ageRange: '18-25' | '26-35' | '36-45' | '46-60' | '60+';
+  ethnicity: 'caucasian' | 'black' | 'asian' | 'hispanic' | 'middle-eastern' | 'mixed';
+}
+
+// Environment settings
+export interface EnvironmentSettings {
+  description: string;
+  lighting: 'natural' | 'studio' | 'soft' | 'dramatic' | 'bright';
+  lensStyle: 'portrait' | 'fashion' | 'product' | 'editorial' | 'casual';
+}
+
+// Generation result
+export interface GenerationResult {
+  originalImageUrl: string;
+  generatedImageUrl: string;
+  promptUsed: string;
+  timestamp: number;
+  modelSettings: ModelSettings;
+  environmentSettings: EnvironmentSettings;
+}
+
+// API response types
+export interface ApiResponse<T> {
+  data?: T;
+  error?: {
+    code: string;
+    message: string;
+    details?: any;
+  };
+}
+
+// Generation history entry
+export interface HistoryEntry {
+  id: string;
+  originalImage: string;
+  generatedImage: string;
+  timestamp: number;
+  modelSettings?: ModelSettings;
+  environmentSettings?: EnvironmentSettings;
 }
 </file>
 
@@ -4867,9 +4560,9 @@ import type { Config } from "tailwindcss";
 export default {
     darkMode: ["class"],
     content: [
-    "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/**/*.{js,ts,jsx,tsx,css,scss}",
+    "./app/**/*.{js,ts,jsx,tsx,css,scss}",
+    "./components/**/*.{js,ts,jsx,tsx,css,scss}"
   ],
   theme: {
   	extend: {
@@ -4988,50 +4681,65 @@ export default {
 }
 </file>
 
-<file path="next.config.ts">
-import type {NextConfig} from 'next';
+<file path=".gitignore">
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-const nextConfig: NextConfig = {
-  /* config options here */
-  typescript: {
-    ignoreBuildErrors: true,
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+.genkit/*
+.aider*
+.env
+.cache/*
+.idx*/*
+.env
+package-lock.json
+</file>
+
+<file path="postcss.config.mjs">
+/** @type {import('postcss-load-config').Config} */
+const config = {
+  plugins: {
+    '@tailwindcss/postcss': {}, // Use the dedicated PostCSS plugin package
+    // autoprefixer: {}, // Add if needed, often handled by Next.js
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'pngimg.com',
-        port: '',
-        pathname: '/uploads/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'picsum.photos',
-        port: '',
-        pathname: '/**',
-      },
-      // Add any other image sources you might use
-    ],
-    // Optimize image formats
-    formats: ['image/avif', 'image/webp'],
-    // Set reasonable image cache duration
-    minimumCacheTTL: 60 * 60 * 24 * 7, // 1 week
-    // Disable static image imports if not needed
-    disableStaticImages: false,
-  },
-  // Improve build performance
-  experimental: {
-    // Enable React compiler for better performance
-    reactCompiler: false, // Disabled until babel-plugin-react-compiler is installed
-  },
-  // Disable x-powered-by header for slightly better security
-  poweredByHeader: false,
 };
 
-export default nextConfig;
+export default config;
 </file>
 
 <file path="src/app/layout.tsx">
@@ -5083,6 +4791,458 @@ export default function RootLayout({
       </body>
     </html>
   );
+}
+</file>
+
+<file path="src/lib/store.ts">
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+
+type ModelSettings = {
+  gender: string;
+  bodyType: string;
+  ageRange: string;
+  ethnicity: string;
+};
+
+type EnvironmentSettings = {
+  description: string;
+  lighting: string;
+  lensStyle: string;
+};
+
+type GenerationState = {
+  // Images
+  originalImage: string | null;
+  generatedImage: string | null;
+  // Settings
+  modelSettings: ModelSettings;
+  environmentSettings: EnvironmentSettings;
+  // UI state
+  isLoading: boolean;
+  error: { message: string } | null;
+  // Remove generationProgress state
+  // generationProgress: number | null;
+  // History (limited to prevent localStorage overflow)
+  history: Array<{
+    id: string;
+    originalImage: string;
+    generatedImage: string;
+    timestamp: number;
+  }>;
+  // Actions
+  setOriginalImage: (url: string) => void;
+  setGeneratedImage: (url: string) => void;
+  setModelSettings: (settings: Partial<ModelSettings>) => void;
+  setEnvironmentSettings: (settings: Partial<EnvironmentSettings>) => void;
+  setLoading: (isLoading: boolean) => void;
+  setError: (error: { message: string } | null) => void;
+  // Remove setGenerationProgress action type
+  // setGenerationProgress: (progress: number | null) => void;
+  addToHistory: (entry: { originalImage: string; generatedImage: string }) => void;
+  clearHistory: () => void;
+};
+
+export const useGenerationStore = create<GenerationState>()(
+  persist(
+    (set) => ({
+      // Initial state
+      originalImage: null,
+      generatedImage: null,
+      modelSettings: {
+        gender: 'female',
+        bodyType: 'average',
+        ageRange: '25-35',
+        ethnicity: 'caucasian',
+      },
+      environmentSettings: {
+        description: 'studio with white background',
+        lighting: 'soft',
+        lensStyle: 'portrait',
+      },
+      isLoading: false,
+      error: null,
+      // Remove initial generationProgress state
+      // generationProgress: null,
+      history: [],
+
+      // Actions
+      setOriginalImage: (url) => set({ originalImage: url }),
+      setGeneratedImage: (url) => set({ generatedImage: url }),
+      setModelSettings: (settings) =>
+        set((state) => ({
+          modelSettings: { ...state.modelSettings, ...settings }
+        })),
+      setEnvironmentSettings: (settings) =>
+        set((state) => ({
+          environmentSettings: { ...state.environmentSettings, ...settings }
+        })),
+      setLoading: (isLoading) => set({ isLoading }),
+      setError: (error) => set({ error }),
+      // Remove setGenerationProgress action implementation
+      // setGenerationProgress: (progress) => set({ generationProgress: progress }),
+      addToHistory: (entry: { originalImage: string; generatedImage: string }) =>
+        set((state) => ({
+          history: [
+            {
+              id: Date.now().toString(),
+              originalImage: entry.originalImage, // Store original source (URL or base64)
+              generatedImage: entry.generatedImage, // Store the persistent URL
+              timestamp: Date.now(),
+            },
+            ...state.history,
+          ].slice(0, 20), // Limit to 20 entries
+        })),
+      clearHistory: () => set({ history: [] }),
+    }),
+    {
+      name: 'styleai-storage',
+      // Only persist these keys to avoid localStorage overflow
+      partialize: (state) => ({
+        modelSettings: state.modelSettings,
+        environmentSettings: state.environmentSettings,
+        history: state.history,
+      }),
+    }
+  )
+);
+</file>
+
+<file path="src/lib/utils.ts">
+import { clsx, type ClassValue } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+
+/**
+ * Checks if a string is a valid base64 image Data URI.
+ */
+export const isDataURI = (uri: string): boolean => /^data:image\/[a-zA-Z]+;base64,/.test(uri);
+</file>
+
+<file path="src/lib/validation.ts">
+/**
+ * Validation schemas and utilities for input validation
+ */
+
+import { z } from 'zod';
+import { ValidationError } from './errors';
+
+// Base model settings schema
+export const modelSettingsSchema = z.object({
+  gender: z.enum(['male', 'female', 'non-binary']),
+  bodyType: z.enum(['slim', 'athletic', 'average', 'plus-size']),
+  ageRange: z.enum(['18-25', '26-35', '36-45', '46-60', '60+']),
+  ethnicity: z.enum(['caucasian', 'black', 'asian', 'hispanic', 'middle-eastern', 'mixed']),
+});
+
+// Environment settings schema
+export const environmentSettingsSchema = z.object({
+  description: z.string().min(3).max(200),
+  lighting: z.enum(['natural', 'studio', 'soft', 'dramatic', 'bright']),
+  lensStyle: z.enum(['portrait', 'fashion', 'product', 'editorial', 'casual']),
+});
+
+// URL validation schema with better error messages
+export const urlSchema = z.string().url({
+  message: "Please enter a valid URL starting with http:// or https://",
+}).refine(
+  (url) => {
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+  {
+    message: "The URL format is invalid",
+  }
+);
+
+// Schema allowing HTTP(S) URLs or base64 image Data URIs
+export const imageUrlOrDataUriSchema = z.string().refine(
+  (val) => isDataURI(val) || /^(https?:\/\/)/.test(val),
+  { message: "Must be a valid URL starting with http(s):// or a base64 image Data URI" }
+).pipe(z.string().min(20, { message: "Input seems too short to be a valid URL or Data URI" })); // Basic length check
+
+// Image URL validation with additional checks (applied only if it's a URL)
+export const imageUrlSchema = imageUrlOrDataUriSchema.refine(
+  (url) => {
+    // If it's a Data URI, skip the extension check
+    if (isDataURI(url)) {
+      return true;
+    }
+    // Otherwise, perform checks for URLs
+    const lowerUrl = url.toLowerCase();
+    return (
+      lowerUrl.endsWith('.jpg') ||
+      lowerUrl.endsWith('.jpeg') ||
+      lowerUrl.endsWith('.png') ||
+      lowerUrl.endsWith('.webp') ||
+      lowerUrl.endsWith('.gif') ||
+      lowerUrl.includes('image') ||
+      // Allow URLs that might be image APIs without extensions
+      lowerUrl.includes('picsum') ||
+      lowerUrl.includes('pngimg') ||
+      lowerUrl.includes('placeholder')
+    );
+  },
+  {
+    message: "The URL doesn't appear to be an image. Please provide a direct link to an image file.",
+  }
+);
+
+// Generation input schema with detailed validation
+export const generateClothingImageInputSchema = z.object({
+  clothingItemUrl: imageUrlOrDataUriSchema, // Use the schema that allows Data URI or URL
+  modelGender: modelSettingsSchema.shape.gender,
+  modelBodyType: modelSettingsSchema.shape.bodyType,
+  modelAgeRange: modelSettingsSchema.shape.ageRange,
+  modelEthnicity: modelSettingsSchema.shape.ethnicity,
+  environmentDescription: environmentSettingsSchema.shape.description,
+  lightingStyle: environmentSettingsSchema.shape.lighting,
+  lensStyle: environmentSettingsSchema.shape.lensStyle,
+});
+
+// Helper function to validate with better error handling
+export function validate<T>(schema: z.ZodSchema<T>, data: unknown): T {
+  try {
+    return schema.parse(data);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      // Get the first error for a cleaner user experience
+      const firstError = error.errors[0];
+      const field = firstError.path.join('.');
+      throw new ValidationError(
+        firstError.message,
+        field,
+        error.errors
+      );
+    }
+    throw error;
+  }
+}
+
+// Validate image URL specifically
+export function validateImageUrl(url: string): string {
+  return validate(imageUrlSchema, url);
+}
+</file>
+
+<file path="src/types/actions.ts">
+import { z } from 'zod';
+import { generateClothingImageInputSchema } from '@/lib/validation';
+
+// Input type for the generateClothingImage function - Inferred from Zod schema
+export type GenerateClothingImageInput = z.infer<typeof generateClothingImageInputSchema>;
+
+// Output type for the generateClothingImage function
+export type GenerateClothingImageOutput = {
+  generatedImageUrl: string; // Will become persistent URL later
+  promptUsed: string;
+};
+
+// Error response type
+export type GenerationError = {
+  code: 'API_ERROR' | 'VALIDATION_ERROR' | 'PROCESSING_ERROR' | 'NETWORK_ERROR';
+  message: string;
+  details?: any;
+};
+</file>
+
+<file path="src/app/globals.css">
+/* src/app/globals.css */
+@import "tailwindcss";
+
+/* Base body styles applied directly, not via @layer */
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Default background and foreground are now handled by Tailwind's base styles
+     and CSS variable inheritance from :root/.dark */
+}
+
+@layer base {
+  /* Define CSS Variables */
+  :root {
+    --background: 220 14% 96%; /* Light Gray */
+    --foreground: 220 10% 39%; /* Dark Gray */
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 220 76% 48%; /* Muted Blue */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 22% 88%;
+    --secondary-foreground: 222.2 47.2% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 142 76% 36%; /* Teal */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 63% 56%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 220 71% 59%;
+    --radius: 0.75rem;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+  }
+
+  .dark {
+    --background: 215 14% 13%; /* Dark Gray */
+    --foreground: 210 20% 98%; /* Off-White */
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 20% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 20% 98%;
+    --primary: 220 76% 48%; /* Muted Blue */
+    --primary-foreground: 222.2 47.2% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 20% 98%;
+    --muted: 216 34% 17%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 142 76% 36%; /* Teal */
+    --accent-foreground: 210 20% 98%;
+    --destructive: 0 63% 56%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+
+  /* REMOVED:
+     * { @apply border-border; }
+     body { @apply bg-background text-foreground; }
+     These were causing build errors and are handled by defaults.
+  */
+}
+
+/* Custom utility-like components defined outside @layer base */
+.container {
+  @apply mx-auto px-4 py-8;
+}
+
+.form-container {
+  @apply bg-card rounded-lg shadow-md p-6;
+}
+
+.form-title {
+  @apply text-2xl font-semibold mb-4 text-center;
+}
+
+.form-group {
+  @apply mb-4;
+}
+
+.form-label {
+  @apply block text-sm font-medium text-foreground mb-2;
+}
+
+.form-input {
+  @apply shadow appearance-none border rounded w-full py-2 px-3 text-foreground leading-tight focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
+}
+
+.button-primary {
+  @apply bg-primary hover:bg-primary/90 text-white font-bold py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
+}
+
+.button-secondary {
+    @apply bg-secondary hover:bg-secondary/80 text-foreground font-bold py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
+}
+
+.image-display {
+  @apply mt-8 flex justify-center;
+}
+
+.image-display img {
+  @apply rounded-lg shadow-lg;
+}
+
+.history-container {
+  @apply mt-8;
+}
+
+.history-title {
+  @apply text-xl font-semibold mb-4;
+}
+
+.history-grid {
+  @apply grid grid-cols-3 gap-4;
+}
+
+.history-item {
+  @apply rounded-lg shadow-md overflow-hidden;
+}
+
+.history-item img {
+  @apply w-full h-auto;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .history-grid {
+    @apply grid-cols-2;
+  }
+}
+
+@media (max-width: 480px) {
+  .history-grid {
+    @apply grid-cols-1;
+  }
+}
+
+/* Enhanced Styling with Tailwind Utilities (Example - these seem fine) */
+.rounded-full {
+    border-radius: 9999px;
+}
+
+.shadow-md {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.shadow-lg {
+    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+}
+
+.mt-8 {
+    margin-top: 2rem;
+}
+
+.mb-4 {
+    margin-bottom: 1rem;
+}
+
+.p-6 {
+    padding: 1.5rem;
 }
 </file>
 
@@ -5260,197 +5420,52 @@ export default function GenerationHistory() {
 }
 </file>
 
-<file path="src/app/globals.css">
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+<file path="next.config.ts">
+import type {NextConfig} from 'next';
 
-body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+const nextConfig: NextConfig = {
+  /* config options here */
+  typescript: {
+    // Ensure type errors are caught during build
+    ignoreBuildErrors: false,
+  },
+  eslint: {
+    // Ensure linting errors are caught during build
+    ignoreDuringBuilds: false,
+  },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'pngimg.com',
+        port: '',
+        pathname: '/uploads/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'picsum.photos',
+        port: '',
+        pathname: '/**',
+      },
+      // Add any other image sources you might use
+    ],
+    // Optimize image formats
+    formats: ['image/avif', 'image/webp'],
+    // Set reasonable image cache duration
+    minimumCacheTTL: 60 * 60 * 24 * 7, // 1 week
+    // Disable static image imports if not needed
+    disableStaticImages: false,
+  },
+  // Improve build performance
+  experimental: {
+    // Enable React compiler for better performance
+    reactCompiler: false, // Disabled until babel-plugin-react-compiler is installed
+  },
+  // Disable x-powered-by header for slightly better security
+  poweredByHeader: false,
+};
 
-@layer base {
-  :root {
-    --background: 220 14% 96%; /* Light Gray */
-    --foreground: 220 10% 39%; /* Dark Gray */
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 220 76% 48%; /* Muted Blue */
-    --primary-foreground: 0 0% 100%;
-    --secondary: 210 22% 88%;
-    --secondary-foreground: 222.2 47.2% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 142 76% 36%; /* Teal */
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 63% 56%;
-    --destructive-foreground: 210 20% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 220 71% 59%;
-    --radius: 0.75rem;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-  }
-
-  .dark {
-    --background: 215 14% 13%; /* Dark Gray */
-    --foreground: 210 20% 98%; /* Off-White */
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 20% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 20% 98%;
-    --primary: 220 76% 48%; /* Muted Blue */
-    --primary-foreground: 222.2 47.2% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 20% 98%;
-    --muted: 216 34% 17%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 142 76% 36%; /* Teal */
-    --accent-foreground: 210 20% 98%;
-    --destructive: 0 63% 56%;
-    --destructive-foreground: 210 20% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-        --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-}
-
-/* Custom styles for improved UI */
-.container {
-  @apply mx-auto px-4 py-8;
-}
-
-.form-container {
-  @apply bg-card rounded-lg shadow-md p-6;
-}
-
-.form-title {
-  @apply text-2xl font-semibold mb-4 text-center;
-}
-
-.form-group {
-  @apply mb-4;
-}
-
-.form-label {
-  @apply block text-sm font-medium text-foreground mb-2;
-}
-
-.form-input {
-  @apply shadow appearance-none border rounded w-full py-2 px-3 text-foreground leading-tight focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
-}
-
-.button-primary {
-  @apply bg-primary hover:bg-primary/90 text-white font-bold py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
-}
-
-.button-secondary {
-    @apply bg-secondary hover:bg-secondary/80 text-foreground font-bold py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
-}
-
-.image-display {
-  @apply mt-8 flex justify-center;
-}
-
-.image-display img {
-  @apply rounded-lg shadow-lg;
-}
-
-.history-container {
-  @apply mt-8;
-}
-
-.history-title {
-  @apply text-xl font-semibold mb-4;
-}
-
-.history-grid {
-  @apply grid grid-cols-3 gap-4;
-}
-
-.history-item {
-  @apply rounded-lg shadow-md overflow-hidden;
-}
-
-.history-item img {
-  @apply w-full h-auto;
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-  .history-grid {
-    @apply grid-cols-2;
-  }
-}
-
-@media (max-width: 480px) {
-  .history-grid {
-    @apply grid-cols-1;
-  }
-}
-
-/* Enhanced Styling with Tailwind Utilities */
-.rounded-full {
-    border-radius: 9999px;
-}
-
-.shadow-md {
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.shadow-lg {
-    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
-}
-
-.mt-8 {
-    margin-top: 2rem;
-}
-
-.mb-4 {
-    margin-bottom: 1rem;
-}
-
-.p-6 {
-    padding: 1.5rem;
-}
+export default nextConfig;
 </file>
 
 <file path="src/app/page.tsx">
@@ -5468,27 +5483,19 @@ import { useGenerationStore } from "@/lib/store";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<string>('upload');
-  const { generatedImage, setGeneratedImage, setOriginalImage } = useGenerationStore();
+  // Get generatedImage state to potentially influence initial tab, but don't load manually
+  const { generatedImage } = useGenerationStore();
 
-  // Load all settings and images from localStorage on initial load
-  useEffect(() => {
-    const generatedImageUrl = localStorage.getItem('generatedImageUrl');
-    const originalImageUrl = localStorage.getItem('clothingItemUrl');
+  // Remove the useEffect for manual localStorage loading.
+  // Zustand's persist middleware handles hydration automatically.
 
-    // Load images if available
-    if (generatedImageUrl) {
-      setGeneratedImage(generatedImageUrl);
-    }
+  // Optional: Set initial tab based on hydrated state (might cause flicker, test needed)
+  // useEffect(() => {
+  //   if (generatedImage) {
+  //     setActiveTab('customize'); // Or keep 'upload' as default?
+  //   }
+  // }, [generatedImage]); // Run only when generatedImage changes after hydration
 
-    if (originalImageUrl) {
-      setOriginalImage(originalImageUrl);
-    }
-
-    // Set active tab based on state
-    if (generatedImageUrl && !originalImageUrl) {
-      setActiveTab('customize');
-    }
-  }, [setGeneratedImage, setOriginalImage]);
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       <Toaster />
@@ -5546,122 +5553,15 @@ export default function Home() {
 }
 </file>
 
-<file path="package.json">
-{
-  "name": "nextn",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev --turbopack -p 9002",
-    "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
-    "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "@genkit-ai/googleai": "*",
-    "@google/genai": "^0.8.0",
-    "@google/generative-ai": "*",
-    "@hookform/resolvers": "^5.0.1",
-    "@radix-ui/react-accordion": "^1.2.4",
-    "@radix-ui/react-alert-dialog": "^1.1.7",
-    "@radix-ui/react-avatar": "^1.1.4",
-    "@radix-ui/react-checkbox": "^1.1.5",
-    "@radix-ui/react-dialog": "^1.1.7",
-    "@radix-ui/react-dropdown-menu": "^2.1.7",
-    "@radix-ui/react-label": "^2.1.3",
-    "@radix-ui/react-menubar": "^1.1.7",
-    "@radix-ui/react-popover": "^1.1.7",
-    "@radix-ui/react-progress": "^1.1.3",
-    "@radix-ui/react-radio-group": "^1.2.4",
-    "@radix-ui/react-scroll-area": "^1.2.4",
-    "@radix-ui/react-select": "^2.1.7",
-    "@radix-ui/react-separator": "^1.1.3",
-    "@radix-ui/react-slider": "^1.2.4",
-    "@radix-ui/react-slot": "^1.2.0",
-    "@radix-ui/react-switch": "^1.1.4",
-    "@radix-ui/react-tabs": "^1.1.4",
-    "@radix-ui/react-toast": "^1.2.7",
-    "@radix-ui/react-tooltip": "^1.2.0",
-    "@tanstack-query-firebase/react": "^2.0.0",
-    "@tanstack/react-query": "^5.72.2",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "date-fns": "^4.1.0",
-    "firebase": "^11.6.0",
-    "genkit": "^1.6.0",
-    "lucide-react": "^0.487.0",
-    "next": "15.3.0",
-    "patch-package": "^8.0.0",
-    "react": "^19.1.0",
-    "react-day-picker": "^9.6.5",
-    "react-dom": "^19.1.0",
-    "react-dropzone": "*",
-    "react-hook-form": "^7.55.0",
-    "recharts": "^2.15.2",
-    "server-perplexity-ask": "^0.1.3",
-    "tailwind-merge": "^3.2.0",
-    "tailwindcss-animate": "^1.0.7",
-    "uuid": "*",
-    "zod": "^3.24.2",
-    "zustand": "^5.0.3"
-  },
-  "devDependencies": {
-    "@types/node": "^22",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "genkit-cli": "^1.6.1",
-    "postcss": "^8",
-    "tailwindcss": "^4.1.3",
-    "typescript": "^5"
-  }
-}
-</file>
-
-<file path="src/ai/flows/generate-clothing-image.ts">
-'use server';
-/**
- * @fileOverview Generates an image of a model wearing a clothing item based on customized attributes.
- *
- * - generateClothingImage - A function that handles the image generation process.
- * - GenerateClothingImageInput - The input type for the generateClothingImage function.
- * - GenerateClothingImageOutput - The return type for the generateClothingImage function.
- */
-
-import { z } from 'zod';
-
-const GenerateClothingImageInputSchema = z.object({
-  clothingItemUrl: z.string().describe('The URL of the clothing item image.'),
-  modelGender: z.string().describe('The gender of the virtual model.'),
-  modelBodyType: z.string().describe('The body type of the virtual model.'),
-  modelAgeRange: z.string().describe('The age range of the virtual model.'),
-  modelEthnicity: z.string().describe('The ethnicity of the virtual model.'),
-  environmentDescription: z.string().describe('The description of the environment.'),
-  lightingStyle: z.string().describe('The lighting style of the environment.'),
-  lensStyle: z.string().describe('The lens style used for the image.'),
-});
-export type GenerateClothingImageInput = z.infer<typeof GenerateClothingImageInputSchema>;
-
-const GenerateClothingImageOutputSchema = z.object({
-  generatedImageUrl: z.string().describe('The URL of the generated image.'),
-  promptUsed: z.string().describe('The prompt used to generate the image.'),
-});
-export type GenerateClothingImageOutput = z.infer<typeof GenerateClothingImageOutputSchema>;
-
-export async function generateClothingImage(input: GenerateClothingImageInput): Promise<GenerateClothingImageOutput> {
-  throw new Error("This should not be called anymore!");
-}
-</file>
-
 <file path="src/app/actions.ts">
 'use server';
 
-import { GoogleGenAI } from "@google/genai";
-import { cache } from 'react';
+// Use the official Google GenAI SDK
+import { GoogleGenAI } from "@google/genai"; // Use @google/genai
 import fs from 'fs/promises';
 import path from 'path';
+// Import crypto for Node.js environment if subtle isn't always available server-side
+import crypto from 'crypto';
 import { z } from 'zod';
 
 // Import our new utilities
@@ -5671,6 +5571,7 @@ import { validate, generateClothingImageInputSchema } from '@/lib/validation';
 import { ApiError, ImageProcessingError, NetworkError, ValidationError, toAppError } from '@/lib/errors';
 import { ModelSettings, EnvironmentSettings } from '@/types';
 import { GenerateClothingImageInput, GenerateClothingImageOutput, GenerationError } from '@/types/actions';
+import { isDataURI } from '@/lib/utils'; // Import the helper
 
 /**
  * Download an image from a URL and convert it to base64
@@ -5707,34 +5608,30 @@ async function downloadImageAsBase64(imageUrl: string): Promise<{ data: string, 
 }
 
 /**
- * Generate a unique filename for storing generated images
+ * Generate a unique filename for storing generated images (using Node.js crypto)
  */
-async function generateUniqueFilename(imageData: string): Promise<string> {
+function generateUniqueFilenameSync(imageData: string): string {
   const timestamp = Date.now();
-  // Use a different approach since crypto.createHash is not available in the browser
-  const hashBuffer = await crypto.subtle.digest(
-    'SHA-256',
-    new TextEncoder().encode(imageData + timestamp)
-  );
+  // Use Node.js crypto for server-side actions
+  const hash = crypto
+    .createHash('sha256')
+    .update(imageData + timestamp)
+    .digest('hex');
 
-  // Convert to hex string
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-
-  return `${timestamp}-${hashHex.slice(0, 8)}.png`;
+  return `${timestamp}-${hash.slice(0, 8)}.png`;
 }
 
 /**
  * Store generated images on the server with metadata
  */
 async function saveGeneratedImage(
-  imageData: string,
+  imageData: string, // Full data URI (e.g., data:image/png;base64,...)
   metadata: {
-    clothingItemUrl: string,
-    modelSettings: Record<string, string>,
-    environmentSettings: Record<string, string>
+    clothingItemUrl: string, // Original source URL or truncated base64 string
+    modelSettings: ModelSettings, // Use specific type
+    environmentSettings: EnvironmentSettings // Use specific type
   }
-): Promise<string> {
+): Promise<string> { // Returns the relative public path (e.g., /generated/...)
   try {
     // Extract base64 data
     const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
@@ -5748,8 +5645,8 @@ async function saveGeneratedImage(
     await fs.mkdir(generatedDir, { recursive: true });
     await fs.mkdir(metadataDir, { recursive: true });
 
-    // Generate unique filename
-    const filename = await generateUniqueFilename(imageData);
+    // Generate unique filename (use sync version here)
+    const filename = generateUniqueFilenameSync(imageData); // Use sync version
     const imagePath = path.join(generatedDir, filename);
     const metadataPath = path.join(metadataDir, `${filename}.json`);
 
@@ -5762,6 +5659,7 @@ async function saveGeneratedImage(
       environmentSettings: metadata.environmentSettings
     }, null, 2));
 
+    // Return the relative path accessible from the web server root
     return `/generated/${filename}`;
   } catch (error) {
     console.error("Error saving generated image:", error);
@@ -5772,12 +5670,6 @@ async function saveGeneratedImage(
   }
 }
 
-/**
- * Cache the generation function to improve performance
- */
-export const generateClothingImageCached = cache(async (input: GenerateClothingImageInput) => {
-  return generateClothingImage(input);
-});
 
 /**
  * Generate an image of a model wearing the provided clothing item
@@ -5793,108 +5685,161 @@ export async function generateClothingImage(input: GenerateClothingImageInput): 
     const cachedResult = await imageCache.get<GenerateClothingImageOutput>(cacheKey);
 
     if (cachedResult) {
-      console.log('Using cached generation result');
+      console.log('Using cached generation result for key:', cacheKey);
       return cachedResult;
     }
+    console.log('No cache hit for key:', cacheKey, '. Generating new image.');
+
 
     // Continue with normal generation if not cached
     const apiKey = process.env.GOOGLE_GENAI_API_KEY;
     if (!apiKey) {
+      console.error("GOOGLE_GENAI_API_KEY is not set.");
       throw new ApiError("GOOGLE_GENAI_API_KEY is not set in environment variables.");
     }
 
-    // Initialize the Google Gemini AI client
-    const genAI = new GoogleGenAI({ apiKey });
+    // Initialize the Google GenAI client using the correct package
+    const ai = new GoogleGenAI({ apiKey });
 
-    // Download and prepare the input image
-    const { data: base64Image, mimeType: inputMimeType } = await downloadImageAsBase64(input.clothingItemUrl);
+    // Define the specific model for image generation
+    // !!! Consult Google Cloud documentation for the appropriate model identifier. !!!
+    const modelIdentifier = "gemini-2.0-flash-exp-image-generation"; // Model from user's example
+
+    // --- Handle base64 Data URI or download URL ---
+    let inputBase64Image: string;
+    let inputMimeType: string;
+    let originalSource = input.clothingItemUrl; // Keep track of original input
+
+    if (isDataURI(input.clothingItemUrl)) {
+      console.log("Using provided base64 image data.");
+      const match = input.clothingItemUrl.match(/^data:(image\/[a-zA-Z]+);base64,(.*)$/);
+      if (!match || match.length < 3) {
+        throw new ImageProcessingError("Invalid image data format provided.");
+      }
+      inputMimeType = match[1];
+      inputBase64Image = match[2];
+      // Optionally truncate base64 if storing it in metadata later
+      originalSource = `${input.clothingItemUrl.substring(0, 50)}... (base64)`;
+    } else {
+      console.log("Downloading image from URL:", input.clothingItemUrl);
+      // Download only if it's a URL
+      try {
+        const downloaded = await downloadImageAsBase64(input.clothingItemUrl);
+        inputBase64Image = downloaded.data;
+        inputMimeType = downloaded.mimeType;
+      } catch (downloadError) {
+        // Provide more specific feedback if download fails
+        throw new NetworkError(`Failed to download image from URL: ${input.clothingItemUrl}`, downloadError instanceof Error ? downloadError : undefined);
+      }
+    }
+    // --- End image handling ---
 
     // Create model and environment settings objects
+    // Zod validation ensures these types match ModelSettings/EnvironmentSettings interfaces
     const modelSettings: ModelSettings = {
-      gender: input.modelGender as any,
-      bodyType: input.modelBodyType as any,
-      ageRange: input.modelAgeRange as any,
-      ethnicity: input.modelEthnicity as any,
+      gender: input.modelGender,
+      bodyType: input.modelBodyType,
+      ageRange: input.modelAgeRange,
+      ethnicity: input.modelEthnicity,
     };
 
     const environmentSettings: EnvironmentSettings = {
       description: input.environmentDescription,
-      lighting: input.lightingStyle as any,
-      lensStyle: input.lensStyle as any,
+      lighting: input.lightingStyle,
+      lensStyle: input.lensStyle,
     };
 
     // Build a structured prompt using our PromptBuilder
     const prompt = PromptBuilder.createPrompt(modelSettings, environmentSettings);
 
-    // Prepare the content parts for the AI model
+    // Prepare the content parts according to the @google/genai example structure
     const contents = [
       { text: prompt },
       {
         inlineData: {
           mimeType: inputMimeType,
-          data: base64Image,
+          data: inputBase64Image,
         },
       },
     ];
 
-    // Generate content using the model
-    const response = await genAI.models.generateContent({
-      model: "gemini-2.0-flash-exp-image-generation",
-      contents,
+    console.log(`Generating image with model: ${modelIdentifier}`);
+    // Generate content using the ai.models.generateContent method
+    const response = await ai.models.generateContent({
+      model: modelIdentifier, // Pass model string directly
+      contents: contents,     // Pass the simplified contents structure
       config: {
-        responseModalities: ["Text", "Image"],
+        responseModalities: ["Text", "Image"], // Specify expected output modalities
       },
     });
 
     // Improved error handling for API responses
-    if (!response) {
-      throw new ApiError('The AI service returned an empty response');
+    if (!response || !response.candidates || response.candidates.length === 0) {
+       console.error("Invalid or empty response from AI service:", response);
+      throw new ApiError('The AI service returned an invalid or empty response object');
     }
 
     // Process the response to extract the generated image
-    let generatedImageUrl = '';
-    const candidate = response?.candidates?.[0];
+    let generatedImageUrl = ''; // This will hold the persistent URL
+    const candidate = response.candidates[0]; // Get the first candidate
 
     if (candidate && candidate.content && candidate.content.parts) {
       for (const part of candidate.content.parts) {
+        if (part.text) {
+          // Log any text part for debugging or potential use
+          console.log("Received text part from Gemini:", part.text);
+        }
         // Look for inlineData which contains the image
         if (part.inlineData) {
-          const imageData = part.inlineData.data;
+          const imageData = part.inlineData.data; // This is base64
           const imageMimeType = part.inlineData.mimeType;
-          generatedImageUrl = `data:${imageMimeType};base64,${imageData}`;
+
+          // *** NEW: Save the image and get persistent URL ***
+          const fullDataUrl = `data:${imageMimeType};base64,${imageData}`;
+          const persistentImageUrl = await saveGeneratedImage(
+            fullDataUrl, // Pass the full data URL to save function
+            {
+              clothingItemUrl: originalSource, // Store original source (URL or truncated base64)
+              modelSettings: modelSettings, // Pass constructed settings
+              environmentSettings: environmentSettings // Pass constructed settings
+            }
+          );
+          console.log("Saved image to:", persistentImageUrl);
+          generatedImageUrl = persistentImageUrl; // Use the persistent URL
+          // *** END NEW ***
           break; // Found the image, exit the loop
-        } else if (part.text) {
-          // Log any text part for debugging
-          console.log("Received text part from Gemini:", part.text);
         }
       }
     } else {
+       console.error("Invalid candidate structure in AI response:", candidate);
       throw new ApiError(
         "Failed to get valid candidates or parts from the Gemini response.",
         undefined,
-        { response }
+        { response } // Include the raw response for debugging if possible
       );
     }
 
-    // Check if an image was actually extracted
+    // Check if an image was actually extracted and saved
     if (!generatedImageUrl) {
+      console.error("Failed to extract and save image data from the response parts.");
       throw new ImageProcessingError(
-        "Failed to find generated image data in the response."
+        "Failed to find and process generated image data in the response."
       );
     }
 
-    // Create the result object
+    // Create the result object with the persistent URL
     const result: GenerateClothingImageOutput = {
-      generatedImageUrl,
+      generatedImageUrl: generatedImageUrl, // Now contains /generated/filename.png
       promptUsed: prompt,
     };
 
-    // Cache the result for future requests
+    // Cache the result (containing the persistent URL)
+    console.log('Caching result for key:', cacheKey);
     await imageCache.set(cacheKey, result);
 
     return result;
   } catch (error: unknown) {
-    console.error("Error generating image:", error);
+    console.error("Error in generateClothingImage action:", error);
 
     // Convert to AppError for consistent error handling
     const appError = toAppError(error);
@@ -5912,14 +5857,14 @@ export async function generateClothingImage(input: GenerateClothingImageInput): 
       return {
         error: {
           code: 'NETWORK_ERROR',
-          message: 'Failed to connect to the AI service. Please check your internet connection.'
+          message: 'Failed to connect to the AI service or download image. Please check your internet connection and image URL.'
         }
       };
     } else if (appError instanceof ApiError) {
       return {
         error: {
           code: 'API_ERROR',
-          message: appError.message,
+          message: `AI Service Error: ${appError.message}`, // Add prefix for clarity
           details: appError.statusCode ? { statusCode: appError.statusCode } : undefined
         }
       };
@@ -5927,22 +5872,92 @@ export async function generateClothingImage(input: GenerateClothingImageInput): 
       return {
         error: {
           code: 'PROCESSING_ERROR',
-          message: 'Failed to process the generated image',
-          details: appError.message
+          message: `Image Processing Error: ${appError.message}`, // Add prefix
+          details: appError.message // Keep original message in details
         }
       };
     } else {
+      // Catch-all for unexpected errors
       return {
         error: {
-          code: 'PROCESSING_ERROR',
-          message: 'An unexpected error occurred while processing your request',
+          code: 'PROCESSING_ERROR', // Use a generic code for unknown internal errors
+          message: 'An unexpected error occurred while processing your request.',
           details: process.env.NODE_ENV === 'development' ? appError.message : undefined
         }
       };
     }
   }
 }
-// --- END OF FILE actions.ts ---
+</file>
+
+<file path="package.json">
+{
+  "name": "nextn",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack -p 9002",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@google/genai": "^0.8.0",
+    "@hookform/resolvers": "^5.0.1",
+    "@radix-ui/react-accordion": "^1.2.4",
+    "@radix-ui/react-alert-dialog": "^1.1.7",
+    "@radix-ui/react-avatar": "^1.1.4",
+    "@radix-ui/react-checkbox": "^1.1.5",
+    "@radix-ui/react-dialog": "^1.1.7",
+    "@radix-ui/react-dropdown-menu": "^2.1.7",
+    "@radix-ui/react-label": "^2.1.3",
+    "@radix-ui/react-menubar": "^1.1.7",
+    "@radix-ui/react-popover": "^1.1.7",
+    "@radix-ui/react-progress": "^1.1.3",
+    "@radix-ui/react-radio-group": "^1.2.4",
+    "@radix-ui/react-scroll-area": "^1.2.4",
+    "@radix-ui/react-select": "^2.1.7",
+    "@radix-ui/react-separator": "^1.1.3",
+    "@radix-ui/react-slider": "^1.2.4",
+    "@radix-ui/react-slot": "^1.2.0",
+    "@radix-ui/react-switch": "^1.1.4",
+    "@radix-ui/react-tabs": "^1.1.4",
+    "@radix-ui/react-toast": "^1.2.7",
+    "@radix-ui/react-tooltip": "^1.2.0",
+    "@tailwindcss/vite": "^4.1.3",
+    "@tanstack-query-firebase/react": "^2.0.0",
+    "@tanstack/react-query": "^5.72.2",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "firebase": "^11.6.0",
+    "lucide-react": "^0.487.0",
+    "next": "15.3.0",
+    "patch-package": "^8.0.0",
+    "react": "^19.1.0",
+    "react-day-picker": "^9.6.5",
+    "react-dom": "^19.1.0",
+    "react-dropzone": "*",
+    "react-hook-form": "^7.55.0",
+    "recharts": "^2.15.2",
+    "server-perplexity-ask": "^0.1.3",
+    "tailwind-merge": "^3.2.0",
+    "tailwindcss-animate": "^1.0.7",
+    "uuid": "*",
+    "zod": "^3.24.2",
+    "zustand": "^5.0.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.3",
+    "@types/node": "^22",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^4.1.3",
+    "typescript": "^5"
+  }
+}
 </file>
 
 <file path="src/components/ImageDisplay.tsx">
@@ -5953,35 +5968,50 @@ import { useState } from 'react';
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Download, Share, Undo } from 'lucide-react';
+import { Download, Share } from 'lucide-react'; // Removed Undo
 import { useGenerationStore } from '@/lib/store';
-import { Progress } from "@/components/ui/progress";
+// Remove Progress import
+// import { Progress } from "@/components/ui/progress";
 
 export default function ImageDisplay() {
-  const { originalImage, generatedImage, isLoading, error, generationProgress } = useGenerationStore();
+  // Remove generationProgress from store destructuring
+  const { originalImage, generatedImage, isLoading, error } = useGenerationStore();
   const [originalLoaded, setOriginalLoaded] = useState(false);
   const [generatedLoaded, setGeneratedLoaded] = useState(false);
 
-  const handleDownload = () => {
+  const handleDownload = async () => { // Add async keyword
     if (!generatedImage) return;
 
-    // Create a temporary anchor element
-    const link = document.createElement('a');
-    link.href = generatedImage;
-    link.download = `styleai-generated-${Date.now()}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      // Fetch the image data from the relative URL
+      const response = await fetch(generatedImage);
+      if (!response.ok) throw new Error('Failed to fetch image for download');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      // Create a temporary anchor element
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `styleai-generated-${Date.now()}.png`; // Suggest a filename
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url); // Clean up blob URL
+    } catch (error) {
+      console.error("Download failed:", error);
+      // Optionally show a toast message to the user
+    }
   };
 
-  const handleShare = async () => {
+  const handleShare = async () => { // Already async, but ensure it is
     if (!generatedImage || !navigator.share) return;
 
     try {
-      // Convert the data URL to a blob
+      // Fetch the image data from the relative URL to create a Blob/File
       const response = await fetch(generatedImage);
+      if (!response.ok) throw new Error('Failed to fetch image for sharing');
       const blob = await response.blob();
-      const file = new File([blob], 'styleai-generated.png', { type: 'image/png' });
+      const file = new File([blob], 'styleai-generated.png', { type: blob.type || 'image/png' });
 
       await navigator.share({
         title: 'My StyleAI Generated Image',
@@ -6031,20 +6061,18 @@ export default function ImageDisplay() {
             <div className="relative aspect-square w-full overflow-hidden rounded-md bg-muted">
               {isLoading ? (
                 <div className="absolute inset-0 flex flex-col items-center justify-center p-6">
+                  {/* Simple Spinner */}
                   <div className="h-12 w-12 mb-4 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-                  <Progress value={generationProgress || 0} className="w-full mb-2" />
+                  {/* Remove Progress bar */}
+                  {/* <Progress value={generationProgress || 0} className="w-full mb-2" /> */}
                   <p className="text-sm text-center font-medium">
-                    Generating your image... {generationProgress ? `${generationProgress}%` : ''}
+                    Generating your image...
+                    {/* Remove percentage display */}
                   </p>
-                  <p className="text-xs text-center text-muted-foreground mt-2">
-                    {generationProgress && generationProgress < 30 ? 'Analyzing clothing item...' :
-                     generationProgress && generationProgress < 60 ? 'Creating virtual model...' :
-                     generationProgress && generationProgress < 80 ? 'Applying style transfer...' :
-                     generationProgress && generationProgress >= 80 ? 'Finalizing image...' : ''}
-                  </p>
+                  {/* Remove detailed progress text */}
                 </div>
               ) : error ? (
-                <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-destructive">
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-destructive text-center">
                   <p className="text-center">
                     Error: {error.message || 'Something went wrong'}
                   </p>
@@ -6091,35 +6119,35 @@ export default function ImageDisplay() {
 }
 </file>
 
-<file path="src/ai/ai-instance.ts">
-export {}
-</file>
-
 <file path="src/components/ModelCustomization.tsx">
 "use client";
 
-import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { generateClothingImage } from '@/app/actions';
-import { GenerateClothingImageInput } from '@/types/actions';
-import { Input } from "@/components/ui/input";
+// GenerateClothingImageInput is now imported via store or types/actions
+import { Input } from "@/components/ui/input"; // Keep Input for other fields if needed
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { LoadingIndicator } from "@/components/ui/loading-indicator";
+// Keep only one import
 import { useGenerationStore } from "@/lib/store";
 
-const ModelCustomization = () => {
-  // Local state for clothing item URL
-  const [clothingItemUrl, setClothingItemUrl] = useState('https://pngimg.com/uploads/dress/dress_PNG33.png');
 
-  // Get model and environment settings from the store
+const ModelCustomization = () => {
+  // Get model, environment settings, and originalImage from the store
   const {
+    originalImage, // Get the uploaded image (base64)
     modelSettings,
     setModelSettings,
     environmentSettings,
-    setEnvironmentSettings
+    setEnvironmentSettings,
+    setGeneratedImage,
+    addToHistory,
+    setLoading,
+    setError
+    // Remove setGenerationProgress
   } = useGenerationStore();
 
   // Destructure settings for easier access
@@ -6135,17 +6163,7 @@ const ModelCustomization = () => {
   const setLighting = (value: string) => setEnvironmentSettings({ lighting: value });
   const setLens = (value: string) => setEnvironmentSettings({ lensStyle: value });
   const { toast } = useToast();
-  const {
-    setGeneratedImage,
-    addToHistory,
-    setLoading,
-    setError,
-    setGenerationProgress,
-    modelSettings,
-    setModelSettings,
-    environmentSettings,
-    setEnvironmentSettings
-  } = useGenerationStore();
+  // Store actions are already destructured above
 
   const handleSubmit = async () => {
     try {
@@ -6154,46 +6172,42 @@ const ModelCustomization = () => {
 
       // Start loading state
       setLoading(true);
-      setGenerationProgress(10); // Initial progress
+      // Remove setGenerationProgress call
+      // setGenerationProgress(10);
 
-      // Set up progress simulation
-      const progressInterval = setInterval(() => {
-        setGenerationProgress(prev => {
-          if (!prev) return 10;
-          // Increment by small amounts until we reach 80%
-          return prev >= 80 ? 80 : prev + 2;
-        });
-      }, 800);
+      // Remove progress simulation interval
+      // const progressInterval = setInterval(() => { ... }, 800);
 
-      // Validate inputs
-      if (!clothingItemUrl) {
+      // Validate inputs - Check for originalImage from the store
+      if (!originalImage) {
         toast({
           title: "Error",
-          description: "Please enter a clothing item URL.",
+          description: "Please upload a clothing item first.",
           variant: "destructive",
         });
         setLoading(false);
-        clearInterval(progressInterval);
-        setGenerationProgress(0);
+        // Remove interval clearing and progress reset
+        // clearInterval(progressInterval);
+        // setGenerationProgress(0);
         return;
       }
 
-      // Store clothing item URL and model attributes in local storage
-      localStorage.setItem('clothingItemUrl', clothingItemUrl);
-      localStorage.setItem('modelGender', gender);
-      localStorage.setItem('modelBodyType', bodyType);
-      localStorage.setItem('modelAgeRange', ageRange);
-      localStorage.setItem('modelEthnicity', ethnicity);
-      localStorage.setItem('environmentDescription', environment);
-      localStorage.setItem('lightingStyle', lighting);
-      localStorage.setItem('lensStyle', lens);
+      // Remove manual localStorage saving - Zustand persist handles settings/history
+      // localStorage.setItem('clothingItemUrl', clothingItemUrl); // REMOVE
+      // localStorage.setItem('modelGender', gender); // REMOVE
+      // localStorage.setItem('modelBodyType', bodyType); // REMOVE
+      // localStorage.setItem('modelAgeRange', ageRange); // REMOVE
+      // localStorage.setItem('modelEthnicity', ethnicity); // REMOVE
+      // localStorage.setItem('environmentDescription', environment); // REMOVE
+      // localStorage.setItem('lightingStyle', lighting); // REMOVE
+      // localStorage.setItem('lensStyle', lens); // REMOVE
 
-      // Update progress
-      setGenerationProgress(30);
+      // Remove progress update
+      // setGenerationProgress(30);
 
-      // Call the generation function with values from the store
+      // Call the generation function with originalImage (base64) from the store
       const result = await generateClothingImage({
-        clothingItemUrl,
+        clothingItemUrl: originalImage, // Pass the base64 Data URI
         modelGender: gender,
         modelBodyType: bodyType,
         modelAgeRange: ageRange,
@@ -6203,32 +6217,48 @@ const ModelCustomization = () => {
         lensStyle: lens,
       });
 
-      // Update progress
-      setGenerationProgress(80);
+      // Remove progress update
+      // setGenerationProgress(80);
 
       if ('error' in result) {
-        // Handle error response
-        setError({ message: result.error.message });
+        // Handle error response with more detail
+        let description = result.error.message;
+        const errorCode = result.error.code;
+        const errorDetails = result.error.details;
+
+        if (errorCode === 'VALIDATION_ERROR' && errorDetails?.field) {
+          description = `Invalid input for ${errorDetails.field}: ${result.error.message}`;
+        } else if (errorCode === 'API_ERROR') {
+          description = `AI Service Error: ${result.error.message}`;
+        } else if (errorCode === 'NETWORK_ERROR') {
+           description = `Network Error: ${result.error.message}. Please check connection.`;
+        } else if (errorCode === 'PROCESSING_ERROR') {
+           description = `Image Processing Error: ${result.error.message}`;
+        }
+        // Add more specific cases as needed
+
+        setError({ message: description }); // Set potentially more specific message in store
         toast({
           title: "Generation Failed",
-          description: result.error.message,
+          description: description, // Use the potentially enhanced description
           variant: "destructive",
         });
       } else if (result.generatedImageUrl && result.promptUsed) {
         // Handle successful generation
-        setGenerationProgress(100);
+        // Remove progress update
+        // setGenerationProgress(100);
 
-        // Store the generated image URL, prompt, and timestamp in local storage
-        localStorage.setItem('generatedImageUrl', result.generatedImageUrl);
-        localStorage.setItem('prompt', result.promptUsed);
-        localStorage.setItem('generationTimestamp', Date.now().toString());
+        // Remove manual localStorage saving
+        // localStorage.setItem('generatedImageUrl', result.generatedImageUrl); // REMOVE
+        // localStorage.setItem('prompt', result.promptUsed); // REMOVE (prompt not stored anyway)
+        // localStorage.setItem('generationTimestamp', Date.now().toString()); // REMOVE
 
-        // Update the store
+        // Update the store with the result (which will soon be a persistent URL)
         setGeneratedImage(result.generatedImageUrl);
 
         // Add to history in the store
         addToHistory({
-          originalImage: clothingItemUrl,
+          originalImage: originalImage, // Use the correct variable from the store
           generatedImage: result.generatedImageUrl
         });
 
@@ -6249,20 +6279,21 @@ const ModelCustomization = () => {
       }
     } catch (error: any) {
       // Handle unexpected errors
-      console.error("Error generating image:", error);
-      setError({ message: error.message || "An unexpected error occurred" });
+      // Handle unexpected errors during the action call itself
+      console.error("Error calling generateClothingImage action:", error);
+      const appError = toAppError(error); // Use error helper
+      setError({ message: appError.message });
       toast({
         title: "Error",
-        description: error.message || "An unexpected error occurred. Please try again.",
+        description: appError.message || "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     } finally {
       // Always reset loading state
       setLoading(false);
-      // Clear the progress interval
-      clearInterval(progressInterval);
-      // Reset progress after a delay to show completion
-      setTimeout(() => setGenerationProgress(0), 1500);
+      // Remove interval clearing and progress reset
+      // clearInterval(progressInterval);
+      // setTimeout(() => setGenerationProgress(0), 1500);
     }
   };
 
@@ -6271,16 +6302,7 @@ const ModelCustomization = () => {
       <h2 className="text-lg font-semibold mb-4">Customize Model</h2>
 
       <div className="grid gap-4">
-         <div>
-          <Label htmlFor="clothing-url">Clothing URL</Label>
-          <Input
-            id="clothing-url"
-            type="text"
-            value={clothingItemUrl}
-            onChange={(e) => setClothingItemUrl(e.target.value)}
-            placeholder="Enter clothing item URL"
-          />
-        </div>
+         {/* Remove the Clothing URL input field */}
         <div>
           <Label htmlFor="gender">Gender</Label>
           <Select value={gender} onValueChange={setGender}>
@@ -6385,23 +6407,15 @@ const ModelCustomization = () => {
         </div>
       </div>
 
-      {generationProgress > 0 && (
-        <div className="mt-4">
-          <LoadingIndicator
-            status="loading"
-            message={generationProgress === 100 ? "Generation complete!" : "Generating image..."}
-            progress={generationProgress}
-            variant="primary"
-          />
-        </div>
-      )}
+      {/* Remove the conditional LoadingIndicator based on generationProgress */}
+      {/* Loading state will be handled by ImageDisplay */}
 
       <Button
         onClick={handleSubmit}
         className="mt-6 w-full"
-        disabled={generationProgress > 0}
+        disabled={isLoading} // Disable button based on isLoading state from store
       >
-        Generate
+        {isLoading ? 'Generating...' : 'Generate'} {/* Optionally change button text */}
       </Button>
     </div>
   );

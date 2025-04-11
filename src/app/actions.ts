@@ -1,7 +1,7 @@
 'use server';
 
-// Use the official Google Generative AI SDK
-import { GoogleGenerativeAI } from "@google/generative-ai";
+// Use the official Google GenAI SDK
+import { GoogleGenAI } from "@google/genai"; // Use @google/genai
 import fs from 'fs/promises';
 import path from 'path';
 // Import crypto for Node.js environment if subtle isn't always available server-side
@@ -69,13 +69,13 @@ function generateUniqueFilenameSync(imageData: string): string {
  * Store generated images on the server with metadata
  */
 async function saveGeneratedImage(
-  imageData: string,
+  imageData: string, // Full data URI (e.g., data:image/png;base64,...)
   metadata: {
-    clothingItemUrl: string,
-    modelSettings: Record<string, string>,
-    environmentSettings: Record<string, string>
+    clothingItemUrl: string, // Original source URL or truncated base64 string
+    modelSettings: ModelSettings, // Use specific type
+    environmentSettings: EnvironmentSettings // Use specific type
   }
-): Promise<string> {
+): Promise<string> { // Returns the relative public path (e.g., /generated/...)
   try {
     // Extract base64 data
     const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
@@ -103,6 +103,7 @@ async function saveGeneratedImage(
       environmentSettings: metadata.environmentSettings
     }, null, 2));
 
+    // Return the relative path accessible from the web server root
     return `/generated/${filename}`;
   } catch (error) {
     console.error("Error saving generated image:", error);
@@ -113,12 +114,6 @@ async function saveGeneratedImage(
   }
 }
 
-/**
- */
-// Remove React cache wrapper - Step 3.2
-// export const generateClothingImageCached = cache(async (input: GenerateClothingImageInput) => {
-//   return generateClothingImage(input);
-// });
 
 /**
  * Generate an image of a model wearing the provided clothing item
@@ -134,30 +129,28 @@ export async function generateClothingImage(input: GenerateClothingImageInput): 
     const cachedResult = await imageCache.get<GenerateClothingImageOutput>(cacheKey);
 
     if (cachedResult) {
-      console.log('Using cached generation result');
+      console.log('Using cached generation result for key:', cacheKey);
       return cachedResult;
     }
+    console.log('No cache hit for key:', cacheKey, '. Generating new image.');
+
 
     // Continue with normal generation if not cached
     const apiKey = process.env.GOOGLE_GENAI_API_KEY;
     if (!apiKey) {
+      console.error("GOOGLE_GENAI_API_KEY is not set.");
       throw new ApiError("GOOGLE_GENAI_API_KEY is not set in environment variables.");
     }
 
-    // Initialize the Google Generative AI client
-    const genAI = new GoogleGenerativeAI(apiKey);
-    // Select the appropriate model for image generation
-    // Note: As of late 2024, specific image generation models might have different names.
-    // Using "gemini-1.5-flash" as a placeholder - VERIFY the correct model name.
-    // Common models were like "gemini-pro-vision" for input, but generation might be different.
-    // Let's assume a hypothetical multimodal model capable of image output.
-    // If separate models are needed (one for understanding image, one for generating), adjust logic.
-    // !!! IMPORTANT: Verify "gemini-1.5-flash" is the correct and available model for image GENERATION via the API. !!!
+    // Initialize the Google GenAI client using the correct package
+    const ai = new GoogleGenAI({ apiKey });
+
+    // Define the specific model for image generation
     // !!! Consult Google Cloud documentation for the appropriate model identifier. !!!
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const modelIdentifier = "gemini-2.0-flash-exp-image-generation"; // Model from user's example
 
     // --- Handle base64 Data URI or download URL ---
-    let base64Image: string;
+    let inputBase64Image: string;
     let inputMimeType: string;
     let originalSource = input.clothingItemUrl; // Keep track of original input
 
@@ -168,7 +161,7 @@ export async function generateClothingImage(input: GenerateClothingImageInput): 
         throw new ImageProcessingError("Invalid image data format provided.");
       }
       inputMimeType = match[1];
-      base64Image = match[2];
+      inputBase64Image = match[2];
       // Optionally truncate base64 if storing it in metadata later
       originalSource = `${input.clothingItemUrl.substring(0, 50)}... (base64)`;
     } else {
@@ -176,7 +169,7 @@ export async function generateClothingImage(input: GenerateClothingImageInput): 
       // Download only if it's a URL
       try {
         const downloaded = await downloadImageAsBase64(input.clothingItemUrl);
-        base64Image = downloaded.data;
+        inputBase64Image = downloaded.data;
         inputMimeType = downloaded.mimeType;
       } catch (downloadError) {
         // Provide more specific feedback if download fails
@@ -203,33 +196,43 @@ export async function generateClothingImage(input: GenerateClothingImageInput): 
     // Build a structured prompt using our PromptBuilder
     const prompt = PromptBuilder.createPrompt(modelSettings, environmentSettings);
 
-    // Prepare the content parts for the AI model
+    // Prepare the content parts according to the @google/genai example structure
     const contents = [
       { text: prompt },
       {
         inlineData: {
           mimeType: inputMimeType,
-          data: base64Image,
+          data: inputBase64Image,
         },
       },
     ];
 
-    // Generate content using the model
-    // The exact method might vary slightly based on the specific SDK version and model capabilities
-    const generationResult = await model.generateContent({ contents }); // Assuming generateContent works for image output
-    const response = generationResult.response;
+    console.log(`Generating image with model: ${modelIdentifier}`);
+    // Generate content using the ai.models.generateContent method
+    const response = await ai.models.generateContent({
+      model: modelIdentifier, // Pass model string directly
+      contents: contents,     // Pass the simplified contents structure
+      config: {
+        responseModalities: ["Text", "Image"], // Specify expected output modalities
+      },
+    });
 
     // Improved error handling for API responses
-    if (!response) {
-      throw new ApiError('The AI service returned an empty response');
+    if (!response || !response.candidates || response.candidates.length === 0) {
+       console.error("Invalid or empty response from AI service:", response);
+      throw new ApiError('The AI service returned an invalid or empty response object');
     }
 
     // Process the response to extract the generated image
     let generatedImageUrl = ''; // This will hold the persistent URL
-    const candidate = response?.candidates?.[0];
+    const candidate = response.candidates[0]; // Get the first candidate
 
     if (candidate && candidate.content && candidate.content.parts) {
       for (const part of candidate.content.parts) {
+        if (part.text) {
+          // Log any text part for debugging or potential use
+          console.log("Received text part from Gemini:", part.text);
+        }
         // Look for inlineData which contains the image
         if (part.inlineData) {
           const imageData = part.inlineData.data; // This is base64
@@ -249,23 +252,22 @@ export async function generateClothingImage(input: GenerateClothingImageInput): 
           generatedImageUrl = persistentImageUrl; // Use the persistent URL
           // *** END NEW ***
           break; // Found the image, exit the loop
-        } else if (part.text) {
-          // Log any text part for debugging
-          console.log("Received text part from Gemini:", part.text);
         }
       }
     } else {
+       console.error("Invalid candidate structure in AI response:", candidate);
       throw new ApiError(
         "Failed to get valid candidates or parts from the Gemini response.",
         undefined,
-        { response }
+        { response } // Include the raw response for debugging if possible
       );
     }
 
-    // Check if an image was actually extracted
+    // Check if an image was actually extracted and saved
     if (!generatedImageUrl) {
+      console.error("Failed to extract and save image data from the response parts.");
       throw new ImageProcessingError(
-        "Failed to find generated image data in the response."
+        "Failed to find and process generated image data in the response."
       );
     }
 
@@ -276,12 +278,12 @@ export async function generateClothingImage(input: GenerateClothingImageInput): 
     };
 
     // Cache the result (containing the persistent URL)
-    // Adjust cache key generation if base64 input makes it too variable/long
+    console.log('Caching result for key:', cacheKey);
     await imageCache.set(cacheKey, result);
 
     return result;
   } catch (error: unknown) {
-    console.error("Error generating image:", error);
+    console.error("Error in generateClothingImage action:", error);
 
     // Convert to AppError for consistent error handling
     const appError = toAppError(error);
@@ -299,14 +301,14 @@ export async function generateClothingImage(input: GenerateClothingImageInput): 
       return {
         error: {
           code: 'NETWORK_ERROR',
-          message: 'Failed to connect to the AI service. Please check your internet connection.'
+          message: 'Failed to connect to the AI service or download image. Please check your internet connection and image URL.'
         }
       };
     } else if (appError instanceof ApiError) {
       return {
         error: {
           code: 'API_ERROR',
-          message: appError.message,
+          message: `AI Service Error: ${appError.message}`, // Add prefix for clarity
           details: appError.statusCode ? { statusCode: appError.statusCode } : undefined
         }
       };
@@ -314,19 +316,19 @@ export async function generateClothingImage(input: GenerateClothingImageInput): 
       return {
         error: {
           code: 'PROCESSING_ERROR',
-          message: 'Failed to process the generated image',
-          details: appError.message
+          message: `Image Processing Error: ${appError.message}`, // Add prefix
+          details: appError.message // Keep original message in details
         }
       };
     } else {
+      // Catch-all for unexpected errors
       return {
         error: {
-          code: 'PROCESSING_ERROR',
-          message: 'An unexpected error occurred while processing your request',
+          code: 'PROCESSING_ERROR', // Use a generic code for unknown internal errors
+          message: 'An unexpected error occurred while processing your request.',
           details: process.env.NODE_ENV === 'development' ? appError.message : undefined
         }
       };
     }
   }
 }
-// --- END OF FILE actions.ts ---
