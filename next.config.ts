@@ -33,14 +33,8 @@ const nextConfig: NextConfig = {
     // Disable static image imports if not needed
     disableStaticImages: false,
   },
-  // Improve build performance
-  experimental: {
-    // Enable React compiler for better performance
-    reactCompiler: false, // Disabled until babel-plugin-react-compiler is installed
-  },
   // Disable x-powered-by header for slightly better security
   poweredByHeader: false,
 };
 
 export default nextConfig;
-

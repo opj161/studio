@@ -19,44 +19,42 @@
   --radius-sm: calc(var(--radius) - 4px);
 
   /* Base Colors (Light Mode - from :root) */
-  --color-background: 220 14% 96%; /* Light Gray */
-  --color-foreground: 220 10% 39%; /* Dark Gray */
-  --color-card: 0 0% 100%;
-  --color-card-foreground: 222.2 84% 4.9%;
-  --color-popover: 0 0% 100%;
-  --color-popover-foreground: 222.2 84% 4.9%;
-  --color-primary: 220 76% 48%; /* Muted Blue */
-  --color-primary-foreground: 0 0% 100%;
-  --color-secondary: 210 22% 88%;
-  --color-secondary-foreground: 222.2 47.2% 11.2%;
-  --color-muted: 210 40% 96.1%;
-  --color-muted-foreground: 215.4 16.3% 46.9%;
-  --color-accent: 142 76% 36%; /* Teal */
-  --color-accent-foreground: 0 0% 100%;
-  --color-destructive: 0 63% 56%;
-  --color-destructive-foreground: 210 20% 98%;
-  --color-border: 214.3 31.8% 91.4%;
-  --color-input: 214.3 31.8% 91.4%;
-  --color-ring: 220 71% 59%;
+  --color-background: hsl(220, 14%, 96%); /* Light Gray */
+  --color-foreground: hsl(220, 10%, 39%); /* Dark Gray */
+  --color-card: hsl(0, 0%, 100%);
+  --color-card-foreground: hsl(222.2, 84%, 4.9%);
+  --color-popover: hsl(0, 0%, 100%);
+  --color-popover-foreground: hsl(222.2, 84%, 4.9%);
+  --color-primary: hsl(220, 76%, 48%); /* Muted Blue */
+  --color-primary-foreground: hsl(0, 0%, 100%);
+  --color-secondary: hsl(210, 22%, 88%);
+  --color-secondary-foreground: hsl(222.2, 47.2%, 11.2%);
+  --color-muted: hsl(210, 40%, 96.1%);
+  --color-muted-foreground: hsl(215.4, 16.3%, 46.9%);
+  --color-accent: hsl(142, 76%, 36%); /* Teal */
+  --color-accent-foreground: hsl(0, 0%, 100%);
+  --color-destructive: hsl(0, 63%, 56%);
+  --color-destructive-foreground: hsl(210, 20%, 98%);
+  --color-border: hsl(214.3, 31.8%, 91.4%);
+  --color-input: hsl(214.3, 31.8%, 91.4%);
+  --color-ring: hsl(220, 71%, 59%);
 
   /* Chart Colors */
-  --color-chart-1: 12 76% 61%;
-  --color-chart-2: 173 58% 39%;
-  --color-chart-3: 197 37% 24%;
-  --color-chart-4: 43 74% 66%;
-  --color-chart-5: 27 87% 67%;
+  --color-chart-1: hsl(12, 76%, 61%);
+  --color-chart-2: hsl(173, 58%, 39%);
+  --color-chart-3: hsl(197, 37%, 24%);
+  --color-chart-4: hsl(43, 74%, 66%);
+  --color-chart-5: hsl(27, 87%, 67%);
 
   /* Sidebar Colors (Light Mode) */
-  --color-sidebar-background: 0 0% 98%;
-  --color-sidebar-foreground: 240 5.3% 26.1%;
-  --color-sidebar-primary: 240 5.9% 10%;
-  --color-sidebar-primary-foreground: 0 0% 98%;
-  --color-sidebar-accent: 240 4.8% 95.9%;
-  --color-sidebar-accent-foreground: 240 5.9% 10%;
-  --color-sidebar-border: 220 13% 91%;
-  --color-sidebar-ring: 217.2 91.2% 59.8%;
-
-  /* Dark Mode Colors (Defined within .dark selector below for specificity) */
+  --color-sidebar-background: hsl(0, 0%, 98%);
+  --color-sidebar-foreground: hsl(240, 5.3%, 26.1%);
+  --color-sidebar-primary: hsl(240, 5.9%, 10%);
+  --color-sidebar-primary-foreground: hsl(0, 0%, 98%);
+  --color-sidebar-accent: hsl(240, 4.8%, 95.9%);
+  --color-sidebar-accent-foreground: hsl(240, 5.9%, 10%);
+  --color-sidebar-border: hsl(220, 13%, 91%);
+  --color-sidebar-ring: hsl(217.2, 91.2%, 59.8%);
 }
 
 /* Base Layer - Apply foundational styles */
@@ -71,66 +69,61 @@
 
   /* Dark Mode Variable Overrides */
   .dark {
-    --color-background: 215 14% 13%; /* Dark Gray */
-    --color-foreground: 210 20% 98%; /* Off-White */
-    --color-card: 222.2 84% 4.9%;
-    --color-card-foreground: 210 20% 98%;
-    --color-popover: 222.2 84% 4.9%;
-    --color-popover-foreground: 210 20% 98%;
-    /* --color-primary: 220 76% 48%; /* Muted Blue (Same as light?) */ */
-    /* --color-primary-foreground: 222.2 47.2% 11.2%; */
-    --color-secondary: 217.2 32.6% 17.5%;
-    --color-secondary-foreground: 210 20% 98%;
-    --color-muted: 216 34% 17%;
-    --color-muted-foreground: 215 20.2% 65.1%;
-    /* --color-accent: 142 76% 36%; /* Teal (Same as light?) */ */
-    /* --color-accent-foreground: 210 20% 98%; */
-    /* --color-destructive: 0 63% 56%; /* (Same as light?) */ */
-    /* --color-destructive-foreground: 210 20% 98%; */
-    --color-border: 217.2 32.6% 17.5%;
-    --color-input: 217.2 32.6% 17.5%;
-    --color-ring: 224.3 76.3% 48%;
+    --color-background: hsl(215, 14%, 13%); /* Dark Gray */
+    --color-foreground: hsl(210, 20%, 98%); /* Off-White */
+    --color-card: hsl(222.2, 84%, 4.9%);
+    --color-card-foreground: hsl(210, 20%, 98%);
+    --color-popover: hsl(222.2, 84%, 4.9%);
+    --color-popover-foreground: hsl(210, 20%, 98%);
+    --color-primary: hsl(220, 76%, 48%); /* Muted Blue */
+    --color-primary-foreground: hsl(0, 0%, 100%);
+    --color-secondary: hsl(217.2, 32.6%, 17.5%);
+    --color-secondary-foreground: hsl(210, 20%, 98%);
+    --color-muted: hsl(216, 34%, 17%);
+    --color-muted-foreground: hsl(215, 20.2%, 65.1%);
+    --color-accent: hsl(142, 76%, 36%); /* Teal */
+    --color-accent-foreground: hsl(210, 20%, 98%);
+    --color-destructive: hsl(0, 63%, 56%);
+    --color-destructive-foreground: hsl(210, 20%, 98%);
+    --color-border: hsl(217.2, 32.6%, 17.5%);
+    --color-input: hsl(217.2, 32.6%, 17.5%);
+    --color-ring: hsl(224.3, 76.3%, 48%);
+
     /* Dark Chart Colors */
-    --color-chart-1: 220 70% 50%;
-    --color-chart-2: 160 60% 45%;
-    --color-chart-3: 30 80% 55%;
-    --color-chart-4: 280 65% 60%;
-    --color-chart-5: 340 75% 55%;
+    --color-chart-1: hsl(220, 70%, 50%);
+    --color-chart-2: hsl(160, 60%, 45%);
+    --color-chart-3: hsl(30, 80%, 55%);
+    --color-chart-4: hsl(280, 65%, 60%);
+    --color-chart-5: hsl(340, 75%, 55%);
+
     /* Dark Sidebar Colors */
-    --color-sidebar-background: 240 5.9% 10%;
-    --color-sidebar-foreground: 240 4.8% 95.9%;
-    --color-sidebar-primary: 224.3 76.3% 48%;
-    --color-sidebar-primary-foreground: 0 0% 100%;
-    --color-sidebar-accent: 240 3.7% 15.9%;
-    --color-sidebar-accent-foreground: 240 4.8% 95.9%;
-    --color-sidebar-border: 240 3.7% 15.9%;
-    --color-sidebar-ring: 217.2 91.2% 59.8%;
+    --color-sidebar-background: hsl(240, 5.9%, 10%);
+    --color-sidebar-foreground: hsl(240, 4.8%, 95.9%);
+    --color-sidebar-primary: hsl(224.3, 76.3%, 48%);
+    --color-sidebar-primary-foreground: hsl(0, 0%, 100%);
+    --color-sidebar-accent: hsl(240, 3.7%, 15.9%);
+    --color-sidebar-accent-foreground: hsl(240, 4.8%, 95.9%);
+    --color-sidebar-border: hsl(240, 3.7%, 15.9%);
+    --color-sidebar-ring: hsl(217.2, 91.2%, 59.8%);
   }
 
-  /* --- Optional: Restore V3 Defaults (Uncomment if needed) --- */
-  /*
-  // Restore v3 default border color (gray-200) if components rely on it
   *, ::before, ::after {
-    border-color: var(--color-border, currentColor); // Use variable if defined, else currentColor
+    border-color: var(--color-border, currentColor);
   }
 
-  // Restore v3 default placeholder color (gray-400)
   input::placeholder,
   textarea::placeholder {
-    color: var(--color-muted-foreground); // Or specific gray like theme('colors.gray.400') equivalent var
+    color: var(--color-muted-foreground);
     opacity: 1;
   }
 
-  // Restore v3 button cursor
   button:not(:disabled), [role="button"]:not(:disabled) {
     cursor: pointer;
   }
 
-  // Restore v3 dialog margins
   dialog {
     margin: auto;
   }
-  */
 }
 
 /* Define Keyframes for Animations */
@@ -138,6 +131,7 @@
   from { height: 0; opacity: 0; }
   to { height: var(--radix-accordion-content-height); opacity: 1; }
 }
+
 @keyframes accordion-up {
   from { height: var(--radix-accordion-content-height); opacity: 1; }
   to { height: 0; opacity: 0; }
@@ -147,6 +141,7 @@
 @utility animate-accordion-down {
   animation: accordion-down 0.2s ease-out;
 }
+
 @utility animate-accordion-up {
   animation: accordion-up 0.2s ease-out;
 }
@@ -159,7 +154,7 @@
 }
 
 .form-container {
-  @apply bg-card rounded-lg shadow-md p-6; /* shadow-md is unchanged */
+  @apply bg-card rounded-lg shadow-md p-6;
 }
 
 .form-title {
@@ -174,17 +169,16 @@
   @apply block text-sm font-medium text-foreground mb-2;
 }
 
-/* Example: If .form-input used default border, add explicit color */
 .form-input {
-  @apply shadow appearance-none border border-input rounded-md w-full py-2 px-3 text-foreground leading-tight focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2; /* Changed focus:outline-none */
+  @apply shadow appearance-none border border-input rounded-md w-full py-2 px-3 text-foreground leading-tight focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2;
 }
 
 .button-primary {
-  @apply bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-2 px-4 rounded focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2; /* Changed focus:outline-none */
+  @apply bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-2 px-4 rounded focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2;
 }
 
 .button-secondary {
-  @apply bg-secondary hover:bg-secondary/80 text-secondary-foreground font-bold py-2 px-4 rounded focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2; /* Changed focus:outline-none */
+  @apply bg-secondary hover:bg-secondary/80 text-secondary-foreground font-bold py-2 px-4 rounded focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2;
 }
 
 .image-display {
@@ -192,7 +186,7 @@
 }
 
 .image-display img {
-  @apply rounded-lg shadow-lg; /* shadow-lg is unchanged */
+  @apply rounded-lg shadow-lg;
 }
 
 .history-container {
@@ -215,7 +209,112 @@
   @apply w-full h-auto;
 }
 
-/* Responsive Design (Keep as is) */
+  /* --- Optional: Restore V3 Defaults (Uncomment if needed) --- */
+  /*
+  *, ::before, ::after {
+    border-color: var(--color-border, currentColor);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-muted-foreground);
+    opacity: 1;
+  }
+
+  button:not(:disabled), [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  dialog {
+    margin: auto;
+  }
+  */
+
+
+/* Define Keyframes for Animations */
+@keyframes accordion-down {
+  from { height: 0; opacity: 0; }
+  to { height: var(--radix-accordion-content-height); opacity: 1; }
+}
+
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); opacity: 1; }
+  to { height: 0; opacity: 0; }
+}
+
+/* Define Custom Utilities using @utility */
+@utility animate-accordion-down {
+  animation: accordion-down 0.2s ease-out;
+}
+
+@utility animate-accordion-up {
+  animation: accordion-up 0.2s ease-out;
+}
+
+/* --- Custom Component Styles (Using @apply - Consider Refactoring Later) --- */
+/* These will now correctly use variables defined in @theme */
+/* For better v4 practice, consider using @utility or applying utilities directly in JSX */
+.container {
+  @apply mx-auto px-4 py-8;
+}
+
+.form-container {
+  @apply bg-card rounded-lg shadow-md p-6;
+}
+
+.form-title {
+  @apply text-2xl font-semibold mb-4 text-center;
+}
+
+.form-group {
+  @apply mb-4;
+}
+
+.form-label {
+  @apply block text-sm font-medium text-foreground mb-2;
+}
+
+.form-input {
+  @apply shadow appearance-none border border-input rounded-md w-full py-2 px-3 text-foreground leading-tight focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2;
+}
+
+.button-primary {
+  @apply bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-2 px-4 rounded focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2;
+}
+
+.button-secondary {
+  @apply bg-secondary hover:bg-secondary/80 text-secondary-foreground font-bold py-2 px-4 rounded focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2;
+}
+
+.image-display {
+  @apply mt-8 flex justify-center;
+}
+
+.image-display img {
+  @apply rounded-lg shadow-lg;
+}
+
+.history-container {
+  @apply mt-8;
+}
+
+.history-title {
+  @apply text-xl font-semibold mb-4;
+}
+
+.history-grid {
+  @apply grid grid-cols-3 gap-4;
+}
+
+.history-item {
+  @apply rounded-lg shadow-md overflow-hidden;
+}
+
+.history-item img {
+  @apply w-full h-auto;
+}
+
+/* Responsive Design */
 @media (max-width: 768px) {
   .history-grid {
     @apply grid-cols-2;

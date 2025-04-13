@@ -1,62 +1,51 @@
 "use client";
 
+import { Gender, BodyType, AgeRange, Ethnicity, EnvironmentDescription, LightingStyle, LensStyle } from '@/lib/store';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { generateClothingImage } from '@/app/actions';
-// GenerateClothingImageInput is now imported via store or types/actions
-import { Input } from "@/components/ui/input"; // Keep Input for other fields if needed
+// Removed Input import as it's not used
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
-import { LoadingIndicator } from "@/components/ui/loading-indicator";
-// Keep only one import
+// Removed Card imports as they are handled by the parent in page.tsx
+import { Separator } from "@/components/ui/separator"; // Import Separator
+import { Loader2 } from 'lucide-react'; // Import spinner icon
+console.log("ModelCustomization loaded");
 import { useGenerationStore } from "@/lib/store";
-
+import { toAppError } from "@/lib/errors"; // Assuming error helper exists
 
 const ModelCustomization = () => {
-  // Get model, environment settings, and originalImage from the store
   const {
-    originalImage, // Get the uploaded image (base64)
+    originalImage,
     modelSettings,
     setModelSettings,
     environmentSettings,
     setEnvironmentSettings,
     setGeneratedImage,
     addToHistory,
+    isLoading, // Get isLoading state
     setLoading,
     setError
-    // Remove setGenerationProgress
   } = useGenerationStore();
 
-  // Destructure settings for easier access
   const { gender, bodyType, ageRange, ethnicity } = modelSettings;
   const { description: environment, lighting, lensStyle: lens } = environmentSettings;
 
-  // Create setter functions that update the store
-  const setGender = (value: string) => setModelSettings({ gender: value });
-  const setBodyType = (value: string) => setModelSettings({ bodyType: value });
-  const setAgeRange = (value: string) => setModelSettings({ ageRange: value });
-  const setEthnicity = (value: string) => setModelSettings({ ethnicity: value });
-  const setEnvironment = (value: string) => setEnvironmentSettings({ description: value });
-  const setLighting = (value: string) => setEnvironmentSettings({ lighting: value });
-  const setLens = (value: string) => setEnvironmentSettings({ lensStyle: value });
+  const setGender = (value: string) => setModelSettings({ gender: value as Gender });
+  const setBodyType = (value: string) => setModelSettings({ bodyType: value as BodyType });
+  const setAgeRange = (value: string) => setModelSettings({ ageRange: value as AgeRange });
+  const setEthnicity = (value: string) => setModelSettings({ ethnicity: value as Ethnicity });
+  const setEnvironment = (value: string) => setEnvironmentSettings({ description: value as EnvironmentDescription });
+  const setLighting = (value: string) => setEnvironmentSettings({ lighting: value as LightingStyle });
+  const setLens = (value: string) => setEnvironmentSettings({ lensStyle: value as LensStyle });
+
   const { toast } = useToast();
-  // Store actions are already destructured above
 
   const handleSubmit = async () => {
     try {
-      // Reset any previous errors
       setError(null);
-
-      // Start loading state
       setLoading(true);
-      // Remove setGenerationProgress call
-      // setGenerationProgress(10);
 
-      // Remove progress simulation interval
-      // const progressInterval = setInterval(() => { ... }, 800);
-
-      // Validate inputs - Check for originalImage from the store
       if (!originalImage) {
         toast({
           title: "Error",
@@ -64,28 +53,11 @@ const ModelCustomization = () => {
           variant: "destructive",
         });
         setLoading(false);
-        // Remove interval clearing and progress reset
-        // clearInterval(progressInterval);
-        // setGenerationProgress(0);
         return;
       }
 
-      // Remove manual localStorage saving - Zustand persist handles settings/history
-      // localStorage.setItem('clothingItemUrl', clothingItemUrl); // REMOVE
-      // localStorage.setItem('modelGender', gender); // REMOVE
-      // localStorage.setItem('modelBodyType', bodyType); // REMOVE
-      // localStorage.setItem('modelAgeRange', ageRange); // REMOVE
-      // localStorage.setItem('modelEthnicity', ethnicity); // REMOVE
-      // localStorage.setItem('environmentDescription', environment); // REMOVE
-      // localStorage.setItem('lightingStyle', lighting); // REMOVE
-      // localStorage.setItem('lensStyle', lens); // REMOVE
-
-      // Remove progress update
-      // setGenerationProgress(30);
-
-      // Call the generation function with originalImage (base64) from the store
       const result = await generateClothingImage({
-        clothingItemUrl: originalImage, // Pass the base64 Data URI
+        clothingItemUrl: originalImage,
         modelGender: gender,
         modelBodyType: bodyType,
         modelAgeRange: ageRange,
@@ -95,11 +67,7 @@ const ModelCustomization = () => {
         lensStyle: lens,
       });
 
-      // Remove progress update
-      // setGenerationProgress(80);
-
       if ('error' in result) {
-        // Handle error response with more detail
         let description = result.error.message;
         const errorCode = result.error.code;
         const errorDetails = result.error.details;
@@ -113,41 +81,24 @@ const ModelCustomization = () => {
         } else if (errorCode === 'PROCESSING_ERROR') {
            description = `Image Processing Error: ${result.error.message}`;
         }
-        // Add more specific cases as needed
 
-        setError({ message: description }); // Set potentially more specific message in store
+        setError({ message: description });
         toast({
           title: "Generation Failed",
-          description: description, // Use the potentially enhanced description
+          description: description,
           variant: "destructive",
         });
       } else if (result.generatedImageUrl && result.promptUsed) {
-        // Handle successful generation
-        // Remove progress update
-        // setGenerationProgress(100);
-
-        // Remove manual localStorage saving
-        // localStorage.setItem('generatedImageUrl', result.generatedImageUrl); // REMOVE
-        // localStorage.setItem('prompt', result.promptUsed); // REMOVE (prompt not stored anyway)
-        // localStorage.setItem('generationTimestamp', Date.now().toString()); // REMOVE
-
-        // Update the store with the result (which will soon be a persistent URL)
         setGeneratedImage(result.generatedImageUrl);
-
-        // Add to history in the store
         addToHistory({
-          originalImage: originalImage, // Use the correct variable from the store
+          originalImage: originalImage,
           generatedImage: result.generatedImageUrl
         });
-
-        // The results will be displayed in the ImageDisplay component through the store
-
         toast({
           title: "Image Generated",
           description: "Successfully generated image.",
         });
       } else {
-        // Handle unexpected response format
         setError({ message: "Received an invalid response from the generation service" });
         toast({
           title: "Generation Failed",
@@ -156,10 +107,8 @@ const ModelCustomization = () => {
         });
       }
     } catch (error: any) {
-      // Handle unexpected errors
-      // Handle unexpected errors during the action call itself
       console.error("Error calling generateClothingImage action:", error);
-      const appError = toAppError(error); // Use error helper
+      const appError = toAppError(error);
       setError({ message: appError.message });
       toast({
         title: "Error",
@@ -167,20 +116,18 @@ const ModelCustomization = () => {
         variant: "destructive",
       });
     } finally {
-      // Always reset loading state
       setLoading(false);
-      // Remove interval clearing and progress reset
-      // clearInterval(progressInterval);
-      // setTimeout(() => setGenerationProgress(0), 1500);
     }
   };
 
+  // TODO: Wrap this return in an animation component (e.g., Framer Motion) for smooth appearance
   return (
-    <div>
-      <h2 className="text-lg font-semibold mb-4">Customize Model</h2>
+    <div className="space-y-6"> {/* Added space-y */}
+      <h2 className="text-lg font-semibold">Customize Model & Scene</h2>
 
-      <div className="grid gap-4">
-         {/* Remove the Clothing URL input field */}
+      {/* Model Settings Group */}
+      <div className="space-y-4">
+        <h3 className="text-base font-medium text-muted-foreground">Model Details</h3>
         <div>
           <Label htmlFor="gender">Gender</Label>
           <Select value={gender} onValueChange={setGender}>
@@ -239,6 +186,13 @@ const ModelCustomization = () => {
             </SelectContent>
           </Select>
         </div>
+      </div>
+
+      <Separator />
+
+      {/* Environment Settings Group */}
+      <div className="space-y-4">
+        <h3 className="text-base font-medium text-muted-foreground">Scene Details</h3>
         <div>
           <Label htmlFor="environment">Environment</Label>
           <Select value={environment} onValueChange={setEnvironment}>
@@ -285,15 +239,19 @@ const ModelCustomization = () => {
         </div>
       </div>
 
-      {/* Remove the conditional LoadingIndicator based on generationProgress */}
-      {/* Loading state will be handled by ImageDisplay */}
-
       <Button
         onClick={handleSubmit}
-        className="mt-6 w-full"
-        disabled={isLoading} // Disable button based on isLoading state from store
+        className="w-full" // Removed mt-6 as parent div has space-y
+        disabled={isLoading || !originalImage} // Also disable if no original image
       >
-        {isLoading ? 'Generating...' : 'Generate'} {/* Optionally change button text */}
+        {isLoading ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Generating...
+          </>
+        ) : (
+          'Generate Image' // Changed text slightly
+        )}
       </Button>
     </div>
   );

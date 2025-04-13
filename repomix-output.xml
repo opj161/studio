@@ -43,11 +43,15 @@ The content is organized as follows:
 </file_summary>
 
 <directory_structure>
+.github/workflows/playwright.yml
 .gitignore
+.roo/mcp.json
 components.json
 docs/blueprint.md
+docs/ui-redesign-plan.md
 next.config.ts
 package.json
+playwright.config.ts
 postcss.config.mjs
 README.md
 src/app/actions.ts
@@ -58,6 +62,7 @@ src/components/ClothingUpload.tsx
 src/components/GenerationHistory.tsx
 src/components/icons.ts
 src/components/ImageDisplay.tsx
+src/components/ImageDisplayCard.tsx
 src/components/ModelCustomization.tsx
 src/components/ui/accordion.tsx
 src/components/ui/alert-dialog.tsx
@@ -105,11 +110,993 @@ src/lib/validation.ts
 src/types/actions.ts
 src/types/index.ts
 tailwind.config.ts
+tests-examples/demo-todo-app.spec.ts
+tests/example.spec.ts
 tsconfig.json
 </directory_structure>
 
 <files>
 This section contains the contents of the repository's files.
+
+<file path=".github/workflows/playwright.yml">
+name: Playwright Tests
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+jobs:
+  test:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: lts/*
+    - name: Install dependencies
+      run: npm ci
+    - name: Install Playwright Browsers
+      run: npx playwright install --with-deps
+    - name: Run Playwright tests
+      run: npx playwright test
+    - uses: actions/upload-artifact@v4
+      if: ${{ !cancelled() }}
+      with:
+        name: playwright-report
+        path: playwright-report/
+        retention-days: 30
+</file>
+
+<file path=".roo/mcp.json">
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "C:\\Program Files\\nodejs\\npx.ps1",
+      "args": [
+        "-y",
+        "@executeautomation/playwright-mcp-server"
+      ]
+    }
+  }
+}
+</file>
+
+<file path="docs/ui-redesign-plan.md">
+Okay, let's create a detailed implementation plan for achieving the dynamic, fluid workspace using Tailwind CSS v4, based on your current codebase and best practices.
+Understanding Tailwind v4 Context:
+Theme in CSS: Your globals.css correctly uses @theme to define colors, radius, etc., with CSS variables. This is the standard v4 approach.
+Core Utilities: Classes like flex, grid, p-4, gap-6, rounded-md, h-full, w-full, aspect-square, object-contain, responsive prefixes (lg:, xl:) are the core tools we'll use.
+No Config Changes: We won't need to modify tailwind.config.ts for theme or layout logic.
+cn Utility: Essential for conditional classes in React components.
+Implementation Plan:
+Phase 0: Prerequisites & Setup
+Define Breakpoints (if needed): Review the default Tailwind breakpoints. If you need custom ones, define them in globals.css under @theme. The defaults (sm, md, lg: 1024px, xl: 1280px, 2xl: 1536px) are likely sufficient. We'll primarily use lg and xl.
+/* globals.css - Example if you needed custom breakpoints */
+@theme {
+  /* ... other theme values ... */
+  /* --breakpoint-lg: 1024px; /* Default */
+  /* --breakpoint-xl: 1280px; /* Default */
+  /* ... */
+}
+content_copy
+download
+Use code with caution.
+Css
+Ensure Vertical Space: The layout needs vertical room to grow. In src/app/page.tsx, ensure the main container allows its children to fill height. Adding flex-grow to the <main> element is a good practice.
+// src/app/page.tsx
+// Add flex-grow to the main element
+<main className="flex-grow container mx-auto px-4 py-8 max-w-7xl grid grid-cols-1 lg:grid-cols-[minmax(350px,_1fr)_2fr] xl:grid-cols-[minmax(350px,_1fr)_1.5fr_1.5fr] gap-6">
+  {/* ... rest of the main content ... */}
+</main>
+content_copy
+download
+Use code with caution.
+Jsx
+Self-correction: The grid declaration should be directly on the main element as shown above, defining the different column structures per breakpoint.
+Phase 1: Restructure the Main Layout Grid (src/app/page.tsx)
+Modify the <main> element's classes to define the responsive grid structure using fractional units (fr) and minmax for fluidity.
+// src/app/page.tsx
+
+export default function Home() {
+  const { originalImage } = useGenerationStore();
+
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-7xl flex flex-col min-h-screen">
+      <Toaster />
+      <header className="mb-6 text-center">
+        <h1 className="text-3xl font-bold">StyleAI</h1>
+      </header>
+
+      {/* Apply flex-grow and the responsive grid structure HERE */}
+      <main className="flex-grow grid grid-cols-1 lg:grid-cols-[minmax(350px,_1fr)_2fr] xl:grid-cols-[minmax(350px,_1fr)_1.5fr_1.5fr] gap-6">
+
+        {/* --- Column 1: Controls (All Breakpoints) --- */}
+        {/* Add flex flex-col h-full to make content fill height */}
+        <div className="lg:col-span-1 flex flex-col space-y-6 h-full">
+          {/* Upload Section */}
+          <Card className="flex flex-col"> {/* Add flex flex-col */}
+            <CardContent className="p-4 flex-grow"> {/* Add flex-grow */}
+              <ClothingUpload />
+            </CardContent>
+          </Card>
+
+          {/* Customization Section - Conditionally Rendered */}
+          {originalImage && (
+            <Card className="flex flex-col"> {/* Add flex flex-col */}
+              <CardContent className="p-4 flex-grow"> {/* Add flex-grow */}
+                <ModelCustomization />
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Generation History - Place at bottom, allow natural height or use ScrollArea */}
+          {/* Accordion should manage its own height internally */}
+          <div className="mt-auto pt-6"> {/* Push history towards the bottom */}
+             <GenerationHistory />
+          </div>
+        </div>
+
+        {/* --- Columns 2 & 3: Results (Vary based on breakpoint) --- */}
+
+        {/* On LG (but not XL), ImageDisplay spans the second column */}
+        {/* On XL, ImageDisplay's *children* are split across cols 2 & 3 */}
+
+        {/* Approach 1: Refactor ImageDisplay (More Complex) */}
+        {/* Would involve ImageDisplay accepting props to render parts separately */}
+
+        {/* Approach 2: Conditional Rendering in Page (Simpler for now) */}
+        {/* We'll conditionally render the individual cards from ImageDisplay logic here */}
+
+        {/* Original Image Card Container (LG: Part of ImageDisplay, XL: Column 2) */}
+        <div className="hidden lg:flex lg:col-start-2 lg:col-span-1 xl:col-start-2 xl:col-span-1 flex-col h-full">
+           <ImageDisplayCard type="original" />
+        </div>
+
+        {/* Generated Result Card Container (LG: Part of ImageDisplay, XL: Column 3) */}
+         <div className="hidden lg:flex lg:col-start-2 lg:col-span-1 xl:col-start-3 xl:col-span-1 flex-col h-full">
+           <ImageDisplayCard type="generated" />
+         </div>
+
+         {/* Mobile View: Use the original ImageDisplay stacking */}
+         <div className="lg:hidden col-span-1">
+            <ImageDisplay /> {/* Original component for mobile stacking */}
+         </div>
+
+      </main>
+    </div>
+  );
+}
+
+// Helper component to render individual cards (logic extracted from ImageDisplay)
+// NOTE: You'll need to adapt the logic/state management from ImageDisplay.tsx here
+const ImageDisplayCard = ({ type }: { type: 'original' | 'generated' }) => {
+   const { originalImage, generatedImage, isLoading, error } = useGenerationStore();
+   const [isLoaded, setIsLoaded] = useState(false);
+   const imageSrc = type === 'original' ? originalImage : generatedImage;
+   const title = type === 'original' ? 'Original Item' : 'Generated Result';
+   const placeholderIcon = type === 'original' ? UploadCloud : Wand2;
+   const placeholderText = type === 'original' ? 'Upload an item...' : 'Generate an image...';
+
+  // Simplified example - Needs full state handling from ImageDisplay.tsx
+   useEffect(() => {
+     setIsLoaded(false);
+   }, [imageSrc]);
+
+  const handleDownload = () => { /* ... download logic ... */ };
+  const handleShare = () => { /* ... share logic ... */ };
+
+
+   return (
+     <Card className="flex flex-col flex-grow"> {/* Ensure card grows */}
+       <CardHeader>
+         <CardTitle>{title}</CardTitle>
+       </CardHeader>
+       <CardContent className="p-4 flex-grow"> {/* Content grows */}
+         <div className="relative aspect-square w-full h-full bg-muted rounded-md overflow-hidden"> {/* Container uses full height */}
+           {/* --- Add conditional rendering logic from ImageDisplay here --- */}
+           {/* Example for generated card loading state */}
+           {type === 'generated' && isLoading && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center p-6">
+                <Skeleton className="h-full w-full" />
+                <p className="absolute bottom-4 text-sm text-center font-medium text-muted-foreground">
+                  AI is creating...
+                </p>
+              </div>
+           )}
+           {/* Example for generated card error state */}
+           {type === 'generated' && error && (
+             <div className="absolute inset-0 flex items-center justify-center p-4">
+               <Alert variant="destructive" className="w-full">
+                 <AlertCircle className="h-4 w-4" />
+                 <AlertTitle>Failed</AlertTitle>
+                 <AlertDescription>{error.message}</AlertDescription>
+               </Alert>
+             </div>
+           )}
+            {/* Example for displaying image */}
+           {imageSrc && !error && !(type === 'generated' && isLoading) && (
+             <>
+               {!isLoaded && <Skeleton className="absolute inset-0" />}
+               <Image
+                 src={imageSrc}
+                 alt={title}
+                 fill
+                 sizes="(max-width: 1280px) 50vw, 33vw" // Adjust sizes based on columns
+                 className={cn("object-contain transition-opacity duration-300", isLoaded ? 'opacity-100' : 'opacity-0')}
+                 priority={type === 'original'}
+                 onLoad={() => setIsLoaded(true)}
+               />
+             </>
+           )}
+           {/* Example for placeholder */}
+           {!imageSrc && !error && !(type === 'generated' && isLoading) && (
+              <div className="flex flex-col h-full items-center justify-center text-muted-foreground p-4">
+                  <placeholderIcon className="h-16 w-16 mb-4 text-gray-400" />
+                  <p className="text-center text-sm">{placeholderText}</p>
+              </div>
+           )}
+           {/* --- End conditional rendering --- */}
+         </div>
+       </CardContent>
+        {/* Add Footer with buttons conditionally for generated card */}
+       {type === 'generated' && generatedImage && !isLoading && !error && (
+          <CardFooter className="px-4 pb-4 pt-2 flex justify-end gap-2">
+            {/* Download/Share buttons */}
+             <TooltipProvider delayDuration={100}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="icon" onClick={handleDownload}>
+                    <Download className="h-4 w-4" />
+                    <span className="sr-only">Download Image</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent><p>Download</p></TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            {/* Share Button (conditionally rendered) */}
+          </CardFooter>
+        )}
+     </Card>
+   );
+};
+content_copy
+download
+Use code with caution.
+Jsx
+Phase 2: Adapt Components for Vertical Filling & Fluidity
+ImageDisplay.tsx (If keeping separate component for mobile):
+Ensure the internal structure uses flex-grow on CardContent and the image container uses aspect-ratio with w-full / h-full and object-contain as described in Phase 1 (ImageDisplayCard helper).
+The internal grid should be grid grid-cols-1 gap-6 (for mobile stacking).
+ClothingUpload.tsx & ModelCustomization.tsx:
+These should fit naturally. Ensure their parent Card components have flex flex-col (added in Phase 1). Their CardContent might need flex-grow if you want internal elements to space out vertically, but it's often not necessary for forms.
+GenerationHistory.tsx:
+The Accordion itself should not flex-grow. It sits at the bottom (mt-auto on its wrapper in page.tsx).
+The ScrollArea inside the AccordionContent needs a defined max-height or height (e.g., h-[250px] or max-h-[40vh]) to become scrollable without pushing the main layout.
+Phase 3: Styling Refinements (Tailwind Classes)
+Consistency: Double-check padding (p-4, p-6), gaps (gap-6), and spacing (space-y-6) for visual harmony across breakpoints.
+Image Containers: Ensure the bg-muted, rounded-md, and overflow-hidden classes are applied consistently to the div containing the next/image component for loading states.
+Placeholders: Use flex items-center justify-center h-full text-muted-foreground within the image containers for vertically and horizontally centered placeholder content.
+Transitions: Apply transition-opacity duration-300 to images for the fade-in effect on load. Consider adding transitions for the appearance/disappearance of the ModelCustomization card (e.g., using CSS or a library).
+Phase 4: Testing
+Browser DevTools: Use the responsive design mode to test:
+Mobile portrait/landscape.
+Tablet portrait/landscape.
+Standard Desktop (around 1024px - 1280px width) -> Should trigger lg: two-column layout.
+Wide Desktop ( > 1280px width) -> Should trigger xl: three-column layout.
+Ultra-wide Desktop ( > 1600px width) -> Check how the fr units distribute space.
+Functionality: Test the entire workflow: upload, customization visibility, generation (including loading/error states), history interaction.
+Edge Cases: Test with long history lists, different image aspect ratios (though object-contain helps), and potential errors during generation.
+Real Devices: Test on actual mobile/tablet devices if possible.
+This plan uses Tailwind v4's responsive modifiers and layout utilities (grid, flex, fr, minmax) to create the dynamic, fluid workspace you described, adapting from a single column on mobile to two and then three fluid columns on wider screens, while ensuring content fills the available vertical space. The helper component approach in page.tsx simplifies handling the split view for ImageDisplay on the widest screens. Remember to move the detailed state logic (loading, error handling, image sources) for the display cards into the ImageDisplayCard helper.
+</file>
+
+<file path="playwright.config.ts">
+import { defineConfig, devices } from '@playwright/test';
+
+/**
+ * Read environment variables from file.
+ * https://github.com/motdotla/dotenv
+ */
+// import dotenv from 'dotenv';
+// import path from 'path';
+// dotenv.config({ path: path.resolve(__dirname, '.env') });
+
+/**
+ * See https://playwright.dev/docs/test-configuration.
+ */
+export default defineConfig({
+  testDir: './tests',
+  /* Run tests in files in parallel */
+  fullyParallel: true,
+  /* Fail the build on CI if you accidentally left test.only in the source code. */
+  forbidOnly: !!process.env.CI,
+  /* Retry on CI only */
+  retries: process.env.CI ? 2 : 0,
+  /* Opt out of parallel tests on CI. */
+  workers: process.env.CI ? 1 : undefined,
+  /* Reporter to use. See https://playwright.dev/docs/test-reporters */
+  reporter: 'html',
+  /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
+  use: {
+    /* Base URL to use in actions like `await page.goto('/')`. */
+    // baseURL: 'http://127.0.0.1:3000',
+
+    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
+    trace: 'on-first-retry',
+  },
+
+  /* Configure projects for major browsers */
+  projects: [
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+    },
+
+    // {
+    //   name: 'firefox',
+    //   use: { ...devices['Desktop Firefox'] },
+    // },
+
+    // {
+    //   name: 'webkit',
+    //   use: { ...devices['Desktop Safari'] },
+    // },
+
+    /* Test against mobile viewports. */
+    // {
+    //   name: 'Mobile Chrome',
+    //   use: { ...devices['Pixel 5'] },
+    // },
+    // {
+    //   name: 'Mobile Safari',
+    //   use: { ...devices['iPhone 12'] },
+    // },
+
+    /* Test against branded browsers. */
+    // {
+    //   name: 'Microsoft Edge',
+    //   use: { ...devices['Desktop Edge'], channel: 'msedge' },
+    // },
+    // {
+    //   name: 'Google Chrome',
+    //   use: { ...devices['Desktop Chrome'], channel: 'chrome' },
+    // },
+  ],
+
+  /* Run your local dev server before starting the tests */
+  // webServer: {
+  //   command: 'npm run start',
+  //   url: 'http://127.0.0.1:3000',
+  //   reuseExistingServer: !process.env.CI,
+  // },
+});
+</file>
+
+<file path="src/components/ImageDisplayCard.tsx">
+"use client";
+
+import Image from 'next/image';
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Download, Share, UploadCloud, Wand2, AlertCircle } from 'lucide-react';
+import { useGenerationStore } from '@/lib/store';
+import { cn } from '@/lib/utils'; // Assuming cn utility is in utils
+
+interface ImageDisplayCardProps {
+  type: 'original' | 'generated';
+}
+
+export default function ImageDisplayCard({ type }: ImageDisplayCardProps) {
+   const { originalImage, generatedImage, isLoading, error } = useGenerationStore();
+   const [isLoaded, setIsLoaded] = useState(false);
+
+   const imageSrc = type === 'original' ? originalImage : generatedImage;
+   const title = type === 'original' ? 'Original Item' : 'Generated Result';
+   const PlaceholderIcon = type === 'original' ? UploadCloud : Wand2;
+   const placeholderText = type === 'original' ? 'Upload an item...' : 'Generate an image...';
+
+   useEffect(() => {
+     setIsLoaded(false); // Reset loading state when image source changes
+   }, [imageSrc]);
+
+   const handleDownload = async () => {
+     if (!generatedImage) return;
+     try {
+       const response = await fetch(generatedImage);
+       if (!response.ok) throw new Error('Failed to fetch image for download');
+       const blob = await response.blob();
+       const url = window.URL.createObjectURL(blob);
+       const link = document.createElement('a');
+       link.href = url;
+       link.download = `styleai-generated-${Date.now()}.png`;
+       document.body.appendChild(link);
+       link.click();
+       document.body.removeChild(link);
+       window.URL.revokeObjectURL(url);
+     } catch (err) {
+       console.error("Download failed:", err);
+       // TODO: Add toast notification on failure
+     }
+   };
+
+   const handleShare = async () => {
+     if (!generatedImage || typeof navigator.share !== 'function') return;
+     try {
+       const response = await fetch(generatedImage);
+       if (!response.ok) throw new Error('Failed to fetch image for sharing');
+       const blob = await response.blob();
+       const file = new File([blob], 'styleai-generated.png', { type: blob.type || 'image/png' });
+       await navigator.share({
+         title: 'My StyleAI Generated Image',
+         text: 'Check out this outfit I generated with StyleAI!',
+         files: [file]
+       });
+     } catch (err) {
+       console.error('Error sharing:', err);
+       // TODO: Add toast notification on failure
+     }
+   };
+
+   // Helper for placeholder
+   const PlaceholderContent = ({ icon: Icon }: { icon: React.ElementType }) => (
+     <div className="flex flex-col h-full items-center justify-center text-muted-foreground p-4">
+       <Icon className="h-16 w-16 mb-4 text-gray-400" />
+       <p className="text-center text-sm">{placeholderText}</p>
+     </div>
+   );
+
+   return (
+     <Card className="flex flex-col flex-grow"> {/* Ensure card grows */}
+       <CardHeader>
+         <CardTitle>{title}</CardTitle>
+       </CardHeader>
+       <CardContent className="p-4 flex-grow"> {/* Content grows */}
+         <div className="relative aspect-square w-full h-full bg-muted rounded-md overflow-hidden"> {/* Container uses full height */}
+           {/* Loading State (Generated Only) */}
+           {type === 'generated' && isLoading && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center p-6">
+                <Skeleton className="h-full w-full" />
+                <p className="absolute bottom-4 text-sm text-center font-medium text-muted-foreground">
+                  AI is creating...
+                </p>
+              </div>
+           )}
+
+           {/* Error State (Generated Only) */}
+           {type === 'generated' && error && !isLoading && (
+             <div className="absolute inset-0 flex items-center justify-center p-4">
+               <Alert variant="destructive" className="w-full">
+                 <AlertCircle className="h-4 w-4" />
+                 <AlertTitle>Failed</AlertTitle>
+                 <AlertDescription>{error.message || 'An unexpected error occurred.'}</AlertDescription>
+               </Alert>
+             </div>
+           )}
+
+           {/* Image Display State */}
+           {imageSrc && !(type === 'generated' && (isLoading || error)) && (
+             <>
+               {!isLoaded && <Skeleton className="absolute inset-0" />}
+               <Image
+                 src={imageSrc}
+                 alt={title}
+                 fill
+                 sizes="(max-width: 1024px) 100vw, (max-width: 1280px) 50vw, 33vw" // Adjusted sizes
+                 className={cn("object-contain transition-opacity duration-300", isLoaded ? 'opacity-100' : 'opacity-0')}
+                 priority={type === 'original'} // Prioritize original image loading
+                 quality={type === 'generated' ? 90 : undefined} // Set quality for generated
+                 onLoad={() => setIsLoaded(true)}
+               />
+             </>
+           )}
+
+           {/* Placeholder State */}
+           {!imageSrc && !(type === 'generated' && (isLoading || error)) && (
+              <PlaceholderContent icon={PlaceholderIcon} />
+           )}
+         </div>
+       </CardContent>
+
+       {/* Footer with buttons (Generated Only, when image exists and no loading/error) */}
+       {type === 'generated' && generatedImage && !isLoading && !error && (
+          <CardFooter className="px-4 pb-4 pt-2 flex justify-end gap-2">
+            <TooltipProvider delayDuration={100}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="icon" onClick={handleDownload}>
+                    <Download className="h-4 w-4" />
+                    <span className="sr-only">Download Image</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent><p>Download</p></TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            {/* Share Button (conditionally rendered based on browser support) */}
+            {typeof navigator !== 'undefined' && typeof navigator.share === 'function' && (
+              <TooltipProvider delayDuration={100}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="icon" onClick={handleShare}>
+                      <Share className="h-4 w-4" />
+                      <span className="sr-only">Share Image</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent><p>Share</p></TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </CardFooter>
+        )}
+     </Card>
+   );
+}
+</file>
+
+<file path="tests-examples/demo-todo-app.spec.ts">
+import { test, expect, type Page } from '@playwright/test';
+
+test.beforeEach(async ({ page }) => {
+  await page.goto('https://demo.playwright.dev/todomvc');
+});
+
+const TODO_ITEMS = [
+  'buy some cheese',
+  'feed the cat',
+  'book a doctors appointment'
+] as const;
+
+test.describe('New Todo', () => {
+  test('should allow me to add todo items', async ({ page }) => {
+    // create a new todo locator
+    const newTodo = page.getByPlaceholder('What needs to be done?');
+
+    // Create 1st todo.
+    await newTodo.fill(TODO_ITEMS[0]);
+    await newTodo.press('Enter');
+
+    // Make sure the list only has one todo item.
+    await expect(page.getByTestId('todo-title')).toHaveText([
+      TODO_ITEMS[0]
+    ]);
+
+    // Create 2nd todo.
+    await newTodo.fill(TODO_ITEMS[1]);
+    await newTodo.press('Enter');
+
+    // Make sure the list now has two todo items.
+    await expect(page.getByTestId('todo-title')).toHaveText([
+      TODO_ITEMS[0],
+      TODO_ITEMS[1]
+    ]);
+
+    await checkNumberOfTodosInLocalStorage(page, 2);
+  });
+
+  test('should clear text input field when an item is added', async ({ page }) => {
+    // create a new todo locator
+    const newTodo = page.getByPlaceholder('What needs to be done?');
+
+    // Create one todo item.
+    await newTodo.fill(TODO_ITEMS[0]);
+    await newTodo.press('Enter');
+
+    // Check that input is empty.
+    await expect(newTodo).toBeEmpty();
+    await checkNumberOfTodosInLocalStorage(page, 1);
+  });
+
+  test('should append new items to the bottom of the list', async ({ page }) => {
+    // Create 3 items.
+    await createDefaultTodos(page);
+
+    // create a todo count locator
+    const todoCount = page.getByTestId('todo-count')
+  
+    // Check test using different methods.
+    await expect(page.getByText('3 items left')).toBeVisible();
+    await expect(todoCount).toHaveText('3 items left');
+    await expect(todoCount).toContainText('3');
+    await expect(todoCount).toHaveText(/3/);
+
+    // Check all items in one call.
+    await expect(page.getByTestId('todo-title')).toHaveText(TODO_ITEMS);
+    await checkNumberOfTodosInLocalStorage(page, 3);
+  });
+});
+
+test.describe('Mark all as completed', () => {
+  test.beforeEach(async ({ page }) => {
+    await createDefaultTodos(page);
+    await checkNumberOfTodosInLocalStorage(page, 3);
+  });
+
+  test.afterEach(async ({ page }) => {
+    await checkNumberOfTodosInLocalStorage(page, 3);
+  });
+
+  test('should allow me to mark all items as completed', async ({ page }) => {
+    // Complete all todos.
+    await page.getByLabel('Mark all as complete').check();
+
+    // Ensure all todos have 'completed' class.
+    await expect(page.getByTestId('todo-item')).toHaveClass(['completed', 'completed', 'completed']);
+    await checkNumberOfCompletedTodosInLocalStorage(page, 3);
+  });
+
+  test('should allow me to clear the complete state of all items', async ({ page }) => {
+    const toggleAll = page.getByLabel('Mark all as complete');
+    // Check and then immediately uncheck.
+    await toggleAll.check();
+    await toggleAll.uncheck();
+
+    // Should be no completed classes.
+    await expect(page.getByTestId('todo-item')).toHaveClass(['', '', '']);
+  });
+
+  test('complete all checkbox should update state when items are completed / cleared', async ({ page }) => {
+    const toggleAll = page.getByLabel('Mark all as complete');
+    await toggleAll.check();
+    await expect(toggleAll).toBeChecked();
+    await checkNumberOfCompletedTodosInLocalStorage(page, 3);
+
+    // Uncheck first todo.
+    const firstTodo = page.getByTestId('todo-item').nth(0);
+    await firstTodo.getByRole('checkbox').uncheck();
+
+    // Reuse toggleAll locator and make sure its not checked.
+    await expect(toggleAll).not.toBeChecked();
+
+    await firstTodo.getByRole('checkbox').check();
+    await checkNumberOfCompletedTodosInLocalStorage(page, 3);
+
+    // Assert the toggle all is checked again.
+    await expect(toggleAll).toBeChecked();
+  });
+});
+
+test.describe('Item', () => {
+
+  test('should allow me to mark items as complete', async ({ page }) => {
+    // create a new todo locator
+    const newTodo = page.getByPlaceholder('What needs to be done?');
+
+    // Create two items.
+    for (const item of TODO_ITEMS.slice(0, 2)) {
+      await newTodo.fill(item);
+      await newTodo.press('Enter');
+    }
+
+    // Check first item.
+    const firstTodo = page.getByTestId('todo-item').nth(0);
+    await firstTodo.getByRole('checkbox').check();
+    await expect(firstTodo).toHaveClass('completed');
+
+    // Check second item.
+    const secondTodo = page.getByTestId('todo-item').nth(1);
+    await expect(secondTodo).not.toHaveClass('completed');
+    await secondTodo.getByRole('checkbox').check();
+
+    // Assert completed class.
+    await expect(firstTodo).toHaveClass('completed');
+    await expect(secondTodo).toHaveClass('completed');
+  });
+
+  test('should allow me to un-mark items as complete', async ({ page }) => {
+    // create a new todo locator
+    const newTodo = page.getByPlaceholder('What needs to be done?');
+
+    // Create two items.
+    for (const item of TODO_ITEMS.slice(0, 2)) {
+      await newTodo.fill(item);
+      await newTodo.press('Enter');
+    }
+
+    const firstTodo = page.getByTestId('todo-item').nth(0);
+    const secondTodo = page.getByTestId('todo-item').nth(1);
+    const firstTodoCheckbox = firstTodo.getByRole('checkbox');
+
+    await firstTodoCheckbox.check();
+    await expect(firstTodo).toHaveClass('completed');
+    await expect(secondTodo).not.toHaveClass('completed');
+    await checkNumberOfCompletedTodosInLocalStorage(page, 1);
+
+    await firstTodoCheckbox.uncheck();
+    await expect(firstTodo).not.toHaveClass('completed');
+    await expect(secondTodo).not.toHaveClass('completed');
+    await checkNumberOfCompletedTodosInLocalStorage(page, 0);
+  });
+
+  test('should allow me to edit an item', async ({ page }) => {
+    await createDefaultTodos(page);
+
+    const todoItems = page.getByTestId('todo-item');
+    const secondTodo = todoItems.nth(1);
+    await secondTodo.dblclick();
+    await expect(secondTodo.getByRole('textbox', { name: 'Edit' })).toHaveValue(TODO_ITEMS[1]);
+    await secondTodo.getByRole('textbox', { name: 'Edit' }).fill('buy some sausages');
+    await secondTodo.getByRole('textbox', { name: 'Edit' }).press('Enter');
+
+    // Explicitly assert the new text value.
+    await expect(todoItems).toHaveText([
+      TODO_ITEMS[0],
+      'buy some sausages',
+      TODO_ITEMS[2]
+    ]);
+    await checkTodosInLocalStorage(page, 'buy some sausages');
+  });
+});
+
+test.describe('Editing', () => {
+  test.beforeEach(async ({ page }) => {
+    await createDefaultTodos(page);
+    await checkNumberOfTodosInLocalStorage(page, 3);
+  });
+
+  test('should hide other controls when editing', async ({ page }) => {
+    const todoItem = page.getByTestId('todo-item').nth(1);
+    await todoItem.dblclick();
+    await expect(todoItem.getByRole('checkbox')).not.toBeVisible();
+    await expect(todoItem.locator('label', {
+      hasText: TODO_ITEMS[1],
+    })).not.toBeVisible();
+    await checkNumberOfTodosInLocalStorage(page, 3);
+  });
+
+  test('should save edits on blur', async ({ page }) => {
+    const todoItems = page.getByTestId('todo-item');
+    await todoItems.nth(1).dblclick();
+    await todoItems.nth(1).getByRole('textbox', { name: 'Edit' }).fill('buy some sausages');
+    await todoItems.nth(1).getByRole('textbox', { name: 'Edit' }).dispatchEvent('blur');
+
+    await expect(todoItems).toHaveText([
+      TODO_ITEMS[0],
+      'buy some sausages',
+      TODO_ITEMS[2],
+    ]);
+    await checkTodosInLocalStorage(page, 'buy some sausages');
+  });
+
+  test('should trim entered text', async ({ page }) => {
+    const todoItems = page.getByTestId('todo-item');
+    await todoItems.nth(1).dblclick();
+    await todoItems.nth(1).getByRole('textbox', { name: 'Edit' }).fill('    buy some sausages    ');
+    await todoItems.nth(1).getByRole('textbox', { name: 'Edit' }).press('Enter');
+
+    await expect(todoItems).toHaveText([
+      TODO_ITEMS[0],
+      'buy some sausages',
+      TODO_ITEMS[2],
+    ]);
+    await checkTodosInLocalStorage(page, 'buy some sausages');
+  });
+
+  test('should remove the item if an empty text string was entered', async ({ page }) => {
+    const todoItems = page.getByTestId('todo-item');
+    await todoItems.nth(1).dblclick();
+    await todoItems.nth(1).getByRole('textbox', { name: 'Edit' }).fill('');
+    await todoItems.nth(1).getByRole('textbox', { name: 'Edit' }).press('Enter');
+
+    await expect(todoItems).toHaveText([
+      TODO_ITEMS[0],
+      TODO_ITEMS[2],
+    ]);
+  });
+
+  test('should cancel edits on escape', async ({ page }) => {
+    const todoItems = page.getByTestId('todo-item');
+    await todoItems.nth(1).dblclick();
+    await todoItems.nth(1).getByRole('textbox', { name: 'Edit' }).fill('buy some sausages');
+    await todoItems.nth(1).getByRole('textbox', { name: 'Edit' }).press('Escape');
+    await expect(todoItems).toHaveText(TODO_ITEMS);
+  });
+});
+
+test.describe('Counter', () => {
+  test('should display the current number of todo items', async ({ page }) => {
+    // create a new todo locator
+    const newTodo = page.getByPlaceholder('What needs to be done?');
+    
+    // create a todo count locator
+    const todoCount = page.getByTestId('todo-count')
+
+    await newTodo.fill(TODO_ITEMS[0]);
+    await newTodo.press('Enter');
+
+    await expect(todoCount).toContainText('1');
+
+    await newTodo.fill(TODO_ITEMS[1]);
+    await newTodo.press('Enter');
+    await expect(todoCount).toContainText('2');
+
+    await checkNumberOfTodosInLocalStorage(page, 2);
+  });
+});
+
+test.describe('Clear completed button', () => {
+  test.beforeEach(async ({ page }) => {
+    await createDefaultTodos(page);
+  });
+
+  test('should display the correct text', async ({ page }) => {
+    await page.locator('.todo-list li .toggle').first().check();
+    await expect(page.getByRole('button', { name: 'Clear completed' })).toBeVisible();
+  });
+
+  test('should remove completed items when clicked', async ({ page }) => {
+    const todoItems = page.getByTestId('todo-item');
+    await todoItems.nth(1).getByRole('checkbox').check();
+    await page.getByRole('button', { name: 'Clear completed' }).click();
+    await expect(todoItems).toHaveCount(2);
+    await expect(todoItems).toHaveText([TODO_ITEMS[0], TODO_ITEMS[2]]);
+  });
+
+  test('should be hidden when there are no items that are completed', async ({ page }) => {
+    await page.locator('.todo-list li .toggle').first().check();
+    await page.getByRole('button', { name: 'Clear completed' }).click();
+    await expect(page.getByRole('button', { name: 'Clear completed' })).toBeHidden();
+  });
+});
+
+test.describe('Persistence', () => {
+  test('should persist its data', async ({ page }) => {
+    // create a new todo locator
+    const newTodo = page.getByPlaceholder('What needs to be done?');
+
+    for (const item of TODO_ITEMS.slice(0, 2)) {
+      await newTodo.fill(item);
+      await newTodo.press('Enter');
+    }
+
+    const todoItems = page.getByTestId('todo-item');
+    const firstTodoCheck = todoItems.nth(0).getByRole('checkbox');
+    await firstTodoCheck.check();
+    await expect(todoItems).toHaveText([TODO_ITEMS[0], TODO_ITEMS[1]]);
+    await expect(firstTodoCheck).toBeChecked();
+    await expect(todoItems).toHaveClass(['completed', '']);
+
+    // Ensure there is 1 completed item.
+    await checkNumberOfCompletedTodosInLocalStorage(page, 1);
+
+    // Now reload.
+    await page.reload();
+    await expect(todoItems).toHaveText([TODO_ITEMS[0], TODO_ITEMS[1]]);
+    await expect(firstTodoCheck).toBeChecked();
+    await expect(todoItems).toHaveClass(['completed', '']);
+  });
+});
+
+test.describe('Routing', () => {
+  test.beforeEach(async ({ page }) => {
+    await createDefaultTodos(page);
+    // make sure the app had a chance to save updated todos in storage
+    // before navigating to a new view, otherwise the items can get lost :(
+    // in some frameworks like Durandal
+    await checkTodosInLocalStorage(page, TODO_ITEMS[0]);
+  });
+
+  test('should allow me to display active items', async ({ page }) => {
+    const todoItem = page.getByTestId('todo-item');
+    await page.getByTestId('todo-item').nth(1).getByRole('checkbox').check();
+
+    await checkNumberOfCompletedTodosInLocalStorage(page, 1);
+    await page.getByRole('link', { name: 'Active' }).click();
+    await expect(todoItem).toHaveCount(2);
+    await expect(todoItem).toHaveText([TODO_ITEMS[0], TODO_ITEMS[2]]);
+  });
+
+  test('should respect the back button', async ({ page }) => {
+    const todoItem = page.getByTestId('todo-item'); 
+    await page.getByTestId('todo-item').nth(1).getByRole('checkbox').check();
+
+    await checkNumberOfCompletedTodosInLocalStorage(page, 1);
+
+    await test.step('Showing all items', async () => {
+      await page.getByRole('link', { name: 'All' }).click();
+      await expect(todoItem).toHaveCount(3);
+    });
+
+    await test.step('Showing active items', async () => {
+      await page.getByRole('link', { name: 'Active' }).click();
+    });
+
+    await test.step('Showing completed items', async () => {
+      await page.getByRole('link', { name: 'Completed' }).click();
+    });
+
+    await expect(todoItem).toHaveCount(1);
+    await page.goBack();
+    await expect(todoItem).toHaveCount(2);
+    await page.goBack();
+    await expect(todoItem).toHaveCount(3);
+  });
+
+  test('should allow me to display completed items', async ({ page }) => {
+    await page.getByTestId('todo-item').nth(1).getByRole('checkbox').check();
+    await checkNumberOfCompletedTodosInLocalStorage(page, 1);
+    await page.getByRole('link', { name: 'Completed' }).click();
+    await expect(page.getByTestId('todo-item')).toHaveCount(1);
+  });
+
+  test('should allow me to display all items', async ({ page }) => {
+    await page.getByTestId('todo-item').nth(1).getByRole('checkbox').check();
+    await checkNumberOfCompletedTodosInLocalStorage(page, 1);
+    await page.getByRole('link', { name: 'Active' }).click();
+    await page.getByRole('link', { name: 'Completed' }).click();
+    await page.getByRole('link', { name: 'All' }).click();
+    await expect(page.getByTestId('todo-item')).toHaveCount(3);
+  });
+
+  test('should highlight the currently applied filter', async ({ page }) => {
+    await expect(page.getByRole('link', { name: 'All' })).toHaveClass('selected');
+    
+    //create locators for active and completed links
+    const activeLink = page.getByRole('link', { name: 'Active' });
+    const completedLink = page.getByRole('link', { name: 'Completed' });
+    await activeLink.click();
+
+    // Page change - active items.
+    await expect(activeLink).toHaveClass('selected');
+    await completedLink.click();
+
+    // Page change - completed items.
+    await expect(completedLink).toHaveClass('selected');
+  });
+});
+
+async function createDefaultTodos(page: Page) {
+  // create a new todo locator
+  const newTodo = page.getByPlaceholder('What needs to be done?');
+
+  for (const item of TODO_ITEMS) {
+    await newTodo.fill(item);
+    await newTodo.press('Enter');
+  }
+}
+
+async function checkNumberOfTodosInLocalStorage(page: Page, expected: number) {
+  return await page.waitForFunction(e => {
+    return JSON.parse(localStorage['react-todos']).length === e;
+  }, expected);
+}
+
+async function checkNumberOfCompletedTodosInLocalStorage(page: Page, expected: number) {
+  return await page.waitForFunction(e => {
+    return JSON.parse(localStorage['react-todos']).filter((todo: any) => todo.completed).length === e;
+  }, expected);
+}
+
+async function checkTodosInLocalStorage(page: Page, title: string) {
+  return await page.waitForFunction(t => {
+    return JSON.parse(localStorage['react-todos']).map((todo: any) => todo.title).includes(t);
+  }, title);
+}
+</file>
+
+<file path="tests/example.spec.ts">
+import { test, expect } from '@playwright/test';
+
+test('has title', async ({ page }) => {
+  await page.goto('https://playwright.dev/');
+
+  // Expect a title "to contain" a substring.
+  await expect(page).toHaveTitle(/Playwright/);
+});
+
+test('get started link', async ({ page }) => {
+  await page.goto('https://playwright.dev/');
+
+  // Click the get started link.
+  await page.getByRole('link', { name: 'Get started' }).click();
+
+  // Expects page to have a heading with the name of Installation.
+  await expect(page.getByRole('heading', { name: 'Installation' })).toBeVisible();
+});
+</file>
 
 <file path="components.json">
 {
@@ -205,273 +1192,6 @@ const Icons = {
 export {Icons};
 </file>
 
-<file path="src/components/ui/accordion.tsx">
-"use client"
-
-import * as React from "react"
-import * as AccordionPrimitive from "@radix-ui/react-accordion"
-import { ChevronDown } from "lucide-react"
-
-import { cn } from "@/lib/utils"
-
-const Accordion = AccordionPrimitive.Root
-
-const AccordionItem = React.forwardRef<
-  React.ElementRef<typeof AccordionPrimitive.Item>,
-  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Item>
->(({ className, ...props }, ref) => (
-  <AccordionPrimitive.Item
-    ref={ref}
-    className={cn("border-b", className)}
-    {...props}
-  />
-))
-AccordionItem.displayName = "AccordionItem"
-
-const AccordionTrigger = React.forwardRef<
-  React.ElementRef<typeof AccordionPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Trigger>
->(({ className, children, ...props }, ref) => (
-  <AccordionPrimitive.Header className="flex">
-    <AccordionPrimitive.Trigger
-      ref={ref}
-      className={cn(
-        "flex flex-1 items-center justify-between py-4 font-medium transition-all hover:underline [&[data-state=open]>svg]:rotate-180",
-        className
-      )}
-      {...props}
-    >
-      {children}
-      <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
-    </AccordionPrimitive.Trigger>
-  </AccordionPrimitive.Header>
-))
-AccordionTrigger.displayName = AccordionPrimitive.Trigger.displayName
-
-const AccordionContent = React.forwardRef<
-  React.ElementRef<typeof AccordionPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Content>
->(({ className, children, ...props }, ref) => (
-  <AccordionPrimitive.Content
-    ref={ref}
-    className="overflow-hidden text-sm transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down"
-    {...props}
-  >
-    <div className={cn("pb-4 pt-0", className)}>{children}</div>
-  </AccordionPrimitive.Content>
-))
-
-AccordionContent.displayName = AccordionPrimitive.Content.displayName
-
-export { Accordion, AccordionItem, AccordionTrigger, AccordionContent }
-</file>
-
-<file path="src/components/ui/alert-dialog.tsx">
-"use client"
-
-import * as React from "react"
-import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
-
-import { cn } from "@/lib/utils"
-import { buttonVariants } from "@/components/ui/button"
-
-const AlertDialog = AlertDialogPrimitive.Root
-
-const AlertDialogTrigger = AlertDialogPrimitive.Trigger
-
-const AlertDialogPortal = AlertDialogPrimitive.Portal
-
-const AlertDialogOverlay = React.forwardRef<
-  React.ElementRef<typeof AlertDialogPrimitive.Overlay>,
-  React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Overlay>
->(({ className, ...props }, ref) => (
-  <AlertDialogPrimitive.Overlay
-    className={cn(
-      "fixed inset-0 z-50 bg-black/80  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-      className
-    )}
-    {...props}
-    ref={ref}
-  />
-))
-AlertDialogOverlay.displayName = AlertDialogPrimitive.Overlay.displayName
-
-const AlertDialogContent = React.forwardRef<
-  React.ElementRef<typeof AlertDialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content>
->(({ className, ...props }, ref) => (
-  <AlertDialogPortal>
-    <AlertDialogOverlay />
-    <AlertDialogPrimitive.Content
-      ref={ref}
-      className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
-        className
-      )}
-      {...props}
-    />
-  </AlertDialogPortal>
-))
-AlertDialogContent.displayName = AlertDialogPrimitive.Content.displayName
-
-const AlertDialogHeader = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn(
-      "flex flex-col space-y-2 text-center sm:text-left",
-      className
-    )}
-    {...props}
-  />
-)
-AlertDialogHeader.displayName = "AlertDialogHeader"
-
-const AlertDialogFooter = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn(
-      "flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2",
-      className
-    )}
-    {...props}
-  />
-)
-AlertDialogFooter.displayName = "AlertDialogFooter"
-
-const AlertDialogTitle = React.forwardRef<
-  React.ElementRef<typeof AlertDialogPrimitive.Title>,
-  React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Title>
->(({ className, ...props }, ref) => (
-  <AlertDialogPrimitive.Title
-    ref={ref}
-    className={cn("text-lg font-semibold", className)}
-    {...props}
-  />
-))
-AlertDialogTitle.displayName = AlertDialogPrimitive.Title.displayName
-
-const AlertDialogDescription = React.forwardRef<
-  React.ElementRef<typeof AlertDialogPrimitive.Description>,
-  React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Description>
->(({ className, ...props }, ref) => (
-  <AlertDialogPrimitive.Description
-    ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
-    {...props}
-  />
-))
-AlertDialogDescription.displayName =
-  AlertDialogPrimitive.Description.displayName
-
-const AlertDialogAction = React.forwardRef<
-  React.ElementRef<typeof AlertDialogPrimitive.Action>,
-  React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Action>
->(({ className, ...props }, ref) => (
-  <AlertDialogPrimitive.Action
-    ref={ref}
-    className={cn(buttonVariants(), className)}
-    {...props}
-  />
-))
-AlertDialogAction.displayName = AlertDialogPrimitive.Action.displayName
-
-const AlertDialogCancel = React.forwardRef<
-  React.ElementRef<typeof AlertDialogPrimitive.Cancel>,
-  React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Cancel>
->(({ className, ...props }, ref) => (
-  <AlertDialogPrimitive.Cancel
-    ref={ref}
-    className={cn(
-      buttonVariants({ variant: "outline" }),
-      "mt-2 sm:mt-0",
-      className
-    )}
-    {...props}
-  />
-))
-AlertDialogCancel.displayName = AlertDialogPrimitive.Cancel.displayName
-
-export {
-  AlertDialog,
-  AlertDialogPortal,
-  AlertDialogOverlay,
-  AlertDialogTrigger,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogFooter,
-  AlertDialogTitle,
-  AlertDialogDescription,
-  AlertDialogAction,
-  AlertDialogCancel,
-}
-</file>
-
-<file path="src/components/ui/alert.tsx">
-import * as React from "react"
-import { cva, type VariantProps } from "class-variance-authority"
-
-import { cn } from "@/lib/utils"
-
-const alertVariants = cva(
-  "relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground",
-  {
-    variants: {
-      variant: {
-        default: "bg-background text-foreground",
-        destructive:
-          "border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-    },
-  }
-)
-
-const Alert = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof alertVariants>
->(({ className, variant, ...props }, ref) => (
-  <div
-    ref={ref}
-    role="alert"
-    className={cn(alertVariants({ variant }), className)}
-    {...props}
-  />
-))
-Alert.displayName = "Alert"
-
-const AlertTitle = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLHeadingElement>
->(({ className, ...props }, ref) => (
-  <h5
-    ref={ref}
-    className={cn("mb-1 font-medium leading-none tracking-tight", className)}
-    {...props}
-  />
-))
-AlertTitle.displayName = "AlertTitle"
-
-const AlertDescription = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLParagraphElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("text-sm [&_p]:leading-relaxed", className)}
-    {...props}
-  />
-))
-AlertDescription.displayName = "AlertDescription"
-
-export { Alert, AlertTitle, AlertDescription }
-</file>
-
 <file path="src/components/ui/avatar.tsx">
 "use client"
 
@@ -532,7 +1252,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  "inline-flex items-center rounded-full border border-border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2",
   {
     variants: {
       variant: {
@@ -542,7 +1262,7 @@ const badgeVariants = cva(
           "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
         destructive:
           "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
-        outline: "text-foreground",
+        outline: "text-foreground border-border",
       },
     },
     defaultVariants: {
@@ -572,7 +1292,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -708,7 +1428,7 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "rounded-lg border bg-card text-card-foreground shadow-sm",
+      "rounded-lg border border-border bg-card text-card-foreground shadow-sm",
       className
     )}
     {...props}
@@ -833,7 +1553,7 @@ const ChartContainer = React.forwardRef<
         data-chart={chartId}
         ref={ref}
         className={cn(
-          "flex aspect-video justify-center text-xs [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/50 [&_.recharts-curve.recharts-tooltip-cursor]:stroke-border [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer]:outline-none [&_.recharts-polar-grid_[stroke='#ccc']]:stroke-border [&_.recharts-radial-bar-background-sector]:fill-muted [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_[stroke='#ccc']]:stroke-border [&_.recharts-sector[stroke='#fff']]:stroke-transparent [&_.recharts-sector]:outline-none [&_.recharts-surface]:outline-none",
+          "flex aspect-video justify-center text-xs [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/50 [&_.recharts-curve.recharts-tooltip-cursor]:stroke-border [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer]:outline-hidden [&_.recharts-polar-grid_[stroke='#ccc']]:stroke-border [&_.recharts-radial-bar-background-sector]:fill-muted [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_[stroke='#ccc']]:stroke-border [&_.recharts-sector[stroke='#fff']]:stroke-transparent [&_.recharts-sector]:outline-hidden [&_.recharts-surface]:outline-hidden",
           className
         )}
         {...props}
@@ -1162,7 +1882,7 @@ const Checkbox = React.forwardRef<
   <CheckboxPrimitive.Root
     ref={ref}
     className={cn(
-      "peer h-4 w-4 shrink-0 rounded-sm border border-primary ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground",
+      "peer h-4 w-4 shrink-0 rounded-sm border border-primary ring-offset-background focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground",
       className
     )}
     {...props}
@@ -1220,13 +1940,13 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
+        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border border-border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
         className
       )}
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
         <X className="h-4 w-4" />
         <span className="sr-only">Close</span>
       </DialogPrimitive.Close>
@@ -1334,7 +2054,7 @@ const DropdownMenuSubTrigger = React.forwardRef<
   <DropdownMenuPrimitive.SubTrigger
     ref={ref}
     className={cn(
-      "flex cursor-default gap-2 select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none focus:bg-accent data-[state=open]:bg-accent [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+      "flex cursor-default gap-2 select-none items-center rounded-sm px-2 py-1.5 text-sm outline-hidden focus:bg-accent data-[state=open]:bg-accent [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
       inset && "pl-8",
       className
     )}
@@ -1354,7 +2074,7 @@ const DropdownMenuSubContent = React.forwardRef<
   <DropdownMenuPrimitive.SubContent
     ref={ref}
     className={cn(
-      "z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+      "z-50 min-w-[8rem] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
       className
     )}
     {...props}
@@ -1372,7 +2092,7 @@ const DropdownMenuContent = React.forwardRef<
       ref={ref}
       sideOffset={sideOffset}
       className={cn(
-        "z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        "z-50 min-w-[8rem] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
         className
       )}
       {...props}
@@ -1390,7 +2110,7 @@ const DropdownMenuItem = React.forwardRef<
   <DropdownMenuPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+      "relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
       inset && "pl-8",
       className
     )}
@@ -1406,7 +2126,7 @@ const DropdownMenuCheckboxItem = React.forwardRef<
   <DropdownMenuPrimitive.CheckboxItem
     ref={ref}
     className={cn(
-      "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-hidden transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className
     )}
     checked={checked}
@@ -1430,7 +2150,7 @@ const DropdownMenuRadioItem = React.forwardRef<
   <DropdownMenuPrimitive.RadioItem
     ref={ref}
     className={cn(
-      "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-hidden transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className
     )}
     {...props}
@@ -1732,7 +2452,7 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
       <input
         type={type}
         className={cn(
-          "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+          "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
           className
         )}
         ref={ref}
@@ -1925,7 +2645,7 @@ const MenubarTrigger = React.forwardRef<
   <MenubarPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex cursor-default select-none items-center rounded-sm px-3 py-1.5 text-sm font-medium outline-none focus:bg-accent focus:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground",
+      "flex cursor-default select-none items-center rounded-sm px-3 py-1.5 text-sm font-medium outline-hidden focus:bg-accent focus:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground",
       className
     )}
     {...props}
@@ -1942,7 +2662,7 @@ const MenubarSubTrigger = React.forwardRef<
   <MenubarPrimitive.SubTrigger
     ref={ref}
     className={cn(
-      "flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground",
+      "flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-hidden focus:bg-accent focus:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground",
       inset && "pl-8",
       className
     )}
@@ -1961,7 +2681,7 @@ const MenubarSubContent = React.forwardRef<
   <MenubarPrimitive.SubContent
     ref={ref}
     className={cn(
-      "z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+      "z-50 min-w-[8rem] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
       className
     )}
     {...props}
@@ -1984,7 +2704,7 @@ const MenubarContent = React.forwardRef<
         alignOffset={alignOffset}
         sideOffset={sideOffset}
         className={cn(
-          "z-50 min-w-[12rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+          "z-50 min-w-[12rem] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
           className
         )}
         {...props}
@@ -2003,7 +2723,7 @@ const MenubarItem = React.forwardRef<
   <MenubarPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-hidden focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       inset && "pl-8",
       className
     )}
@@ -2019,7 +2739,7 @@ const MenubarCheckboxItem = React.forwardRef<
   <MenubarPrimitive.CheckboxItem
     ref={ref}
     className={cn(
-      "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-hidden focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className
     )}
     checked={checked}
@@ -2042,7 +2762,7 @@ const MenubarRadioItem = React.forwardRef<
   <MenubarPrimitive.RadioItem
     ref={ref}
     className={cn(
-      "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-hidden focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className
     )}
     {...props}
@@ -2145,7 +2865,7 @@ const PopoverContent = React.forwardRef<
       align={align}
       sideOffset={sideOffset}
       className={cn(
-        "z-50 w-72 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        "z-50 w-72 rounded-md border border-border bg-popover p-4 text-popover-foreground shadow-md outline-hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
         className
       )}
       {...props}
@@ -2308,7 +3028,7 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+      "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
       className
     )}
     {...props}
@@ -2364,7 +3084,7 @@ const SelectContent = React.forwardRef<
     <SelectPrimitive.Content
       ref={ref}
       className={cn(
-        "relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        "relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
         position === "popper" &&
           "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
         className
@@ -2407,7 +3127,7 @@ const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-hidden focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className
     )}
     {...props}
@@ -3068,7 +3788,7 @@ const SidebarGroupLabel = React.forwardRef<
       ref={ref}
       data-sidebar="group-label"
       className={cn(
-        "duration-200 flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-sidebar-foreground/70 outline-none ring-sidebar-ring transition-[margin,opa] ease-linear focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
+        "duration-200 flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-sidebar-foreground/70 outline-hidden ring-sidebar-ring transition-[margin,opa] ease-linear focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
         "group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0",
         className
       )}
@@ -3141,7 +3861,7 @@ const SidebarMenuItem = React.forwardRef<
 SidebarMenuItem.displayName = "SidebarMenuItem"
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-hidden ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -3235,7 +3955,7 @@ const SidebarMenuAction = React.forwardRef<
       ref={ref}
       data-sidebar="menu-action"
       className={cn(
-        "absolute right-1 top-1.5 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-foreground outline-none ring-sidebar-ring transition-transform hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 peer-hover/menu-button:text-sidebar-accent-foreground [&>svg]:size-4 [&>svg]:shrink-0",
+        "absolute right-1 top-1.5 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-foreground outline-hidden ring-sidebar-ring transition-transform hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 peer-hover/menu-button:text-sidebar-accent-foreground [&>svg]:size-4 [&>svg]:shrink-0",
         // Increases the hit area of the button on mobile.
         "after:absolute after:-inset-2 after:md:hidden",
         "peer-data-[size=sm]/menu-button:top-1",
@@ -3351,7 +4071,7 @@ const SidebarMenuSubButton = React.forwardRef<
       data-size={size}
       data-active={isActive}
       className={cn(
-        "flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 text-sidebar-foreground outline-none ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-sidebar-accent-foreground",
+        "flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 text-sidebar-foreground outline-hidden ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-sidebar-accent-foreground",
         "data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground",
         size === "sm" && "text-xs",
         size === "md" && "text-sm",
@@ -3455,7 +4175,7 @@ const Switch = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SwitchPrimitives.Root
     className={cn(
-      "peer inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=unchecked]:bg-input",
+      "peer inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=unchecked]:bg-input",
       className
     )}
     {...props}
@@ -3496,7 +4216,7 @@ const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className, ...props }, ref) => (
-  <thead ref={ref} className={cn("[&_tr]:border-b", className)} {...props} />
+  <thead ref={ref} className={cn("[&_tr]:border-b [&_tr]:border-border", className)} {...props} />
 ))
 TableHeader.displayName = "TableHeader"
 
@@ -3519,7 +4239,7 @@ const TableFooter = React.forwardRef<
   <tfoot
     ref={ref}
     className={cn(
-      "border-t bg-muted/50 font-medium [&>tr]:last:border-b-0",
+      "border-t border-border bg-muted/50 font-medium [&>tr]:last:border-b-0",
       className
     )}
     {...props}
@@ -3534,7 +4254,7 @@ const TableRow = React.forwardRef<
   <tr
     ref={ref}
     className={cn(
-      "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
+      "border-b border-border transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
       className
     )}
     {...props}
@@ -3625,7 +4345,7 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm",
+      "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm",
       className
     )}
     {...props}
@@ -3640,7 +4360,7 @@ const TabsContent = React.forwardRef<
   <TabsPrimitive.Content
     ref={ref}
     className={cn(
-      "mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+      "mt-2 ring-offset-background focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
       className
     )}
     {...props}
@@ -3661,7 +4381,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, React.ComponentProps<'tex
     return (
       <textarea
         className={cn(
-          'flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',
+          'flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',
           className
         )}
         ref={ref}
@@ -3707,7 +4427,7 @@ const toastVariants = cva(
   {
     variants: {
       variant: {
-        default: "border bg-background text-foreground",
+        default: "border border-border bg-background text-foreground",
         destructive:
           "destructive group border-destructive bg-destructive text-destructive-foreground",
       },
@@ -3867,7 +4587,7 @@ const TooltipContent = React.forwardRef<
     ref={ref}
     sideOffset={sideOffset}
     className={cn(
-      "z-50 overflow-hidden rounded-md border bg-popover px-3 py-1.5 text-sm text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+      "z-50 overflow-hidden rounded-md border border-border bg-popover px-3 py-1.5 text-sm text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
       className
     )}
     {...props}
@@ -4554,103 +5274,6 @@ export interface HistoryEntry {
 }
 </file>
 
-<file path="tailwind.config.ts">
-import type { Config } from "tailwindcss";
-
-export default {
-    darkMode: ["class"],
-    content: [
-    "./src/**/*.{js,ts,jsx,tsx,css,scss}",
-    "./app/**/*.{js,ts,jsx,tsx,css,scss}",
-    "./components/**/*.{js,ts,jsx,tsx,css,scss}"
-  ],
-  theme: {
-  	extend: {
-  		colors: {
-  			background: 'hsl(var(--background))',
-  			foreground: 'hsl(var(--foreground))',
-  			card: {
-  				DEFAULT: 'hsl(var(--card))',
-  				foreground: 'hsl(var(--card-foreground))'
-  			},
-  			popover: {
-  				DEFAULT: 'hsl(var(--popover))',
-  				foreground: 'hsl(var(--popover-foreground))'
-  			},
-  			primary: {
-  				DEFAULT: 'hsl(var(--primary))',
-  				foreground: 'hsl(var(--primary-foreground))'
-  			},
-  			secondary: {
-  				DEFAULT: 'hsl(var(--secondary))',
-  				foreground: 'hsl(var(--secondary-foreground))'
-  			},
-  			muted: {
-  				DEFAULT: 'hsl(var(--muted))',
-  				foreground: 'hsl(var(--muted-foreground))'
-  			},
-  			accent: {
-  				DEFAULT: 'hsl(var(--accent))',
-  				foreground: 'hsl(var(--accent-foreground))'
-  			},
-  			destructive: {
-  				DEFAULT: 'hsl(var(--destructive))',
-  				foreground: 'hsl(var(--destructive-foreground))'
-  			},
-  			border: 'hsl(var(--border))',
-  			input: 'hsl(var(--input))',
-  			ring: 'hsl(var(--ring))',
-  			chart: {
-  				'1': 'hsl(var(--chart-1))',
-  				'2': 'hsl(var(--chart-2))',
-  				'3': 'hsl(var(--chart-3))',
-  				'4': 'hsl(var(--chart-4))',
-  				'5': 'hsl(var(--chart-5))'
-  			},
-  			sidebar: {
-  				DEFAULT: 'hsl(var(--sidebar-background))',
-  				foreground: 'hsl(var(--sidebar-foreground))',
-  				primary: 'hsl(var(--sidebar-primary))',
-  				'primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
-  				accent: 'hsl(var(--sidebar-accent))',
-  				'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
-  				border: 'hsl(var(--sidebar-border))',
-  				ring: 'hsl(var(--sidebar-ring))'
-  			}
-  		},
-  		borderRadius: {
-  			lg: 'var(--radius)',
-  			md: 'calc(var(--radius) - 2px)',
-  			sm: 'calc(var(--radius) - 4px)'
-  		},
-  		keyframes: {
-  			'accordion-down': {
-  				from: {
-  					height: '0'
-  				},
-  				to: {
-  					height: 'var(--radix-accordion-content-height)'
-  				}
-  			},
-  			'accordion-up': {
-  				from: {
-  					height: 'var(--radix-accordion-content-height)'
-  				},
-  				to: {
-  					height: '0'
-  				}
-  			}
-  		},
-  		animation: {
-  			'accordion-down': 'accordion-down 0.2s ease-out',
-  			'accordion-up': 'accordion-up 0.2s ease-out'
-  		}
-  	}
-  },
-  plugins: [require("tailwindcss-animate")],
-} satisfies Config;
-</file>
-
 <file path="tsconfig.json">
 {
   "compilerOptions": {
@@ -4728,14 +5351,22 @@ next-env.d.ts
 .idx*/*
 .env
 package-lock.json
+.env
+
+# Playwright
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
 </file>
 
 <file path="postcss.config.mjs">
 /** @type {import('postcss-load-config').Config} */
 const config = {
   plugins: {
-    '@tailwindcss/postcss': {}, // Use the dedicated PostCSS plugin package
-    // autoprefixer: {}, // Add if needed, often handled by Next.js
+    '@tailwindcss/postcss': {}, // Changed from 'tailwindcss' to '@tailwindcss/postcss'
+    // autoprefixer: {}, // Add if needed
   },
 };
 
@@ -4794,21 +5425,268 @@ export default function RootLayout({
 }
 </file>
 
+<file path="src/components/ui/accordion.tsx">
+"use client"
+
+import * as React from "react"
+import * as AccordionPrimitive from "@radix-ui/react-accordion"
+import { ChevronDown } from "lucide-react"
+
+import { cn } from "@/lib/utils"
+
+const Accordion = AccordionPrimitive.Root
+
+const AccordionItem = React.forwardRef<
+  React.ElementRef<typeof AccordionPrimitive.Item>,
+  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Item>
+>(({ className, ...props }, ref) => (
+  <AccordionPrimitive.Item
+    ref={ref}
+    // V4 Fix: Added explicit border color
+    className={cn("border-b border-border", className)}
+    {...props}
+  />
+))
+AccordionItem.displayName = "AccordionItem"
+
+const AccordionTrigger = React.forwardRef<
+  React.ElementRef<typeof AccordionPrimitive.Trigger>,
+  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Trigger>
+>(({ className, children, ...props }, ref) => (
+  <AccordionPrimitive.Header className="flex">
+    <AccordionPrimitive.Trigger
+      ref={ref}
+      className={cn(
+        "flex flex-1 items-center justify-between py-4 font-medium transition-all hover:underline [&[data-state=open]>svg]:rotate-180",
+        // No outline-none needed here usually, relies on browser default or ring
+        className
+      )}
+      {...props}
+    >
+      {children}
+      <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+    </AccordionPrimitive.Trigger>
+  </AccordionPrimitive.Header>
+))
+AccordionTrigger.displayName = AccordionPrimitive.Trigger.displayName
+
+const AccordionContent = React.forwardRef<
+  React.ElementRef<typeof AccordionPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Content>
+>(({ className, children, ...props }, ref) => (
+  <AccordionPrimitive.Content
+    ref={ref}
+    // V4 Fix: Use custom utilities defined in globals.css
+    className="overflow-hidden text-sm transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down"
+    {...props}
+  >
+    <div className={cn("pb-4 pt-0", className)}>{children}</div>
+  </AccordionPrimitive.Content>
+))
+
+AccordionContent.displayName = AccordionPrimitive.Content.displayName
+
+export { Accordion, AccordionItem, AccordionTrigger, AccordionContent }
+</file>
+
+<file path="src/components/ui/alert-dialog.tsx">
+"use client"
+
+import * as React from "react"
+import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
+
+import { cn } from "@/lib/utils"
+import { buttonVariants } from "@/components/ui/button"
+
+const AlertDialog = AlertDialogPrimitive.Root
+
+const AlertDialogTrigger = AlertDialogPrimitive.Trigger
+
+const AlertDialogPortal = AlertDialogPrimitive.Portal
+
+const AlertDialogOverlay = React.forwardRef<
+  React.ElementRef<typeof AlertDialogPrimitive.Overlay>,
+  React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Overlay>
+>(({ className, ...props }, ref) => (
+  <AlertDialogPrimitive.Overlay
+    className={cn(
+      "fixed inset-0 z-50 bg-black/80  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      className
+    )}
+    {...props}
+    ref={ref}
+  />
+))
+AlertDialogOverlay.displayName = AlertDialogPrimitive.Overlay.displayName
+
+const AlertDialogContent = React.forwardRef<
+  React.ElementRef<typeof AlertDialogPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content>
+>(({ className, ...props }, ref) => (
+  <AlertDialogPortal>
+    <AlertDialogOverlay />
+    <AlertDialogPrimitive.Content
+      ref={ref}
+      className={cn(
+        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border border-border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[",
+        // V4 Fix: Added explicit border color
+        className
+      )}
+      {...props}
+    />
+  </AlertDialogPortal>
+))
+AlertDialogContent.displayName = AlertDialogPrimitive.Content.displayName
+
+// ... (AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription - no changes needed)
+
+const AlertDialogAction = React.forwardRef<
+  React.ElementRef<typeof AlertDialogPrimitive.Action>,
+  React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Action>
+>(({ className, ...props }, ref) => (
+  <AlertDialogPrimitive.Action
+    ref={ref}
+    // Button variant handles focus styles, including outline-hidden/ring
+    className={cn(buttonVariants(), className)}
+    {...props}
+  />
+))
+AlertDialogAction.displayName = AlertDialogPrimitive.Action.displayName
+
+const AlertDialogCancel = React.forwardRef<
+  React.ElementRef<typeof AlertDialogPrimitive.Cancel>,
+  React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Cancel>
+>(({ className, ...props }, ref) => (
+  <AlertDialogPrimitive.Cancel
+    ref={ref}
+    // Button variant handles focus styles, including outline-hidden/ring
+    className={cn(
+      buttonVariants({ variant: "outline" }),
+      "mt-2 sm:mt-0",
+      className
+    )}
+    {...props}
+  />
+))
+AlertDialogCancel.displayName = AlertDialogPrimitive.Cancel.displayName
+
+export {
+  AlertDialog,
+  AlertDialogPortal,
+  AlertDialogOverlay,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+}
+</file>
+
+<file path="src/components/ui/alert.tsx">
+import * as React from "react"
+import { cva, type VariantProps } from "class-variance-authority"
+
+import { cn } from "@/lib/utils"
+
+const alertVariants = cva(
+  // V4 Fix: Added explicit base border color (using var(--color-border) defined in @theme)
+  "relative w-full rounded-lg border border-border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground",
+  {
+    variants: {
+      variant: {
+        default: "bg-background text-foreground",
+        // V4 Fix: Destructive variant explicitly sets its border color now
+        destructive:
+          "border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  }
+)
+
+const Alert = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof alertVariants>
+>(({ className, variant, ...props }, ref) => (
+  <div
+    ref={ref}
+    role="alert"
+    className={cn(alertVariants({ variant }), className)}
+    {...props}
+  />
+))
+Alert.displayName = "Alert"
+
+// ... (AlertTitle, AlertDescription - no changes needed)
+const AlertTitle = React.forwardRef<
+  HTMLHeadingElement,
+  React.HTMLAttributes<HTMLHeadingElement>
+>(({ className, ...props }, ref) => (
+  <h5
+    ref={ref}
+    className={cn("mb-1 font-medium leading-none tracking-tight", className)}
+    {...props}
+  />
+));
+AlertTitle.displayName = "AlertTitle";
+
+const AlertDescription = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("text-sm [&_p]:leading-relaxed", className)}
+    {...props}
+  />
+));
+AlertDescription.displayName = "AlertDescription";
+
+
+export { Alert, AlertTitle, AlertDescription }
+</file>
+
 <file path="src/lib/store.ts">
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+// Define specific literal types based on UI options and expected schema
+export type Gender = "male" | "female" | "non-binary";
+export type BodyType = "slim" | "athletic" | "average" | "plus-size";
+export type AgeRange = "18-25" | "26-35" | "36-45" | "46-60" | "60+";
+export type Ethnicity = "caucasian" | "black" | "asian" | "hispanic" | "middle-eastern" | "mixed";
+export type EnvironmentDescription = "studio" | "outdoor" | "urban" | "beach"; // Assuming these cover the schema
+export type LightingStyle = "natural" | "studio" | "soft" | "dramatic" | "bright";
+export type LensStyle = "portrait" | "fashion" | "product" | "editorial" | "casual";
+
+
+// Update type definitions to use literal types
 type ModelSettings = {
-  gender: string;
-  bodyType: string;
-  ageRange: string;
-  ethnicity: string;
+  gender: Gender;
+  bodyType: BodyType;
+  ageRange: AgeRange;
+  ethnicity: Ethnicity;
 };
 
 type EnvironmentSettings = {
-  description: string;
-  lighting: string;
-  lensStyle: string;
+  description: EnvironmentDescription; // Use specific type if schema requires it, otherwise string might be okay if description is freeform
+  lighting: LightingStyle;
+  lensStyle: LensStyle;
+};
+
+type HistoryEntry = {
+  id: string;
+  originalImage: string; // Can be base64 or URL
+  generatedImage: string; // Should be the persistent URL
+  timestamp: number;
+  // Optional: Could store settings used for this generation
+  // modelSettings?: ModelSettings;
+  // environmentSettings?: EnvironmentSettings;
 };
 
 type GenerationState = {
@@ -4821,53 +5699,44 @@ type GenerationState = {
   // UI state
   isLoading: boolean;
   error: { message: string } | null;
-  // Remove generationProgress state
-  // generationProgress: number | null;
-  // History (limited to prevent localStorage overflow)
-  history: Array<{
-    id: string;
-    originalImage: string;
-    generatedImage: string;
-    timestamp: number;
-  }>;
+  // History
+  history: Array<HistoryEntry>;
   // Actions
-  setOriginalImage: (url: string) => void;
-  setGeneratedImage: (url: string) => void;
+  setOriginalImage: (url: string | null) => void; // Allow null for clearing
+  setGeneratedImage: (url: string | null) => void; // Allow null for clearing
   setModelSettings: (settings: Partial<ModelSettings>) => void;
   setEnvironmentSettings: (settings: Partial<EnvironmentSettings>) => void;
   setLoading: (isLoading: boolean) => void;
   setError: (error: { message: string } | null) => void;
-  // Remove setGenerationProgress action type
-  // setGenerationProgress: (progress: number | null) => void;
   addToHistory: (entry: { originalImage: string; generatedImage: string }) => void;
   clearHistory: () => void;
+  // Optional: Action to restore state from history
+  // restoreFromHistory: (id: string) => void;
 };
 
 export const useGenerationStore = create<GenerationState>()(
   persist(
-    (set) => ({
-      // Initial state
+    (set, get) => ({ // Added get to access state in actions if needed
+      // Initial state (ensure values match literal types)
       originalImage: null,
       generatedImage: null,
       modelSettings: {
         gender: 'female',
         bodyType: 'average',
-        ageRange: '25-35',
+        ageRange: '26-35', // Corrected initial value
         ethnicity: 'caucasian',
       },
       environmentSettings: {
-        description: 'studio with white background',
+        description: 'studio', // Corrected initial value (assuming 'studio' is valid)
         lighting: 'soft',
         lensStyle: 'portrait',
       },
       isLoading: false,
       error: null,
-      // Remove initial generationProgress state
-      // generationProgress: null,
       history: [],
 
       // Actions
-      setOriginalImage: (url) => set({ originalImage: url }),
+      setOriginalImage: (url) => set({ originalImage: url, generatedImage: null, error: null }), // Clear generated/error on new upload
       setGeneratedImage: (url) => set({ generatedImage: url }),
       setModelSettings: (settings) =>
         set((state) => ({
@@ -4879,25 +5748,45 @@ export const useGenerationStore = create<GenerationState>()(
         })),
       setLoading: (isLoading) => set({ isLoading }),
       setError: (error) => set({ error }),
-      // Remove setGenerationProgress action implementation
-      // setGenerationProgress: (progress) => set({ generationProgress: progress }),
       addToHistory: (entry: { originalImage: string; generatedImage: string }) =>
-        set((state) => ({
-          history: [
-            {
-              id: Date.now().toString(),
-              originalImage: entry.originalImage, // Store original source (URL or base64)
-              generatedImage: entry.generatedImage, // Store the persistent URL
-              timestamp: Date.now(),
-            },
-            ...state.history,
-          ].slice(0, 20), // Limit to 20 entries
-        })),
+        set((state) => {
+          // Prevent adding duplicates based on generated image URL? (Optional)
+          // if (state.history.some(h => h.generatedImage === entry.generatedImage)) {
+          //   return {}; // Don't add if already exists
+          // }
+          const newHistoryEntry: HistoryEntry = {
+            id: Date.now().toString(),
+            originalImage: entry.originalImage,
+            generatedImage: entry.generatedImage,
+            timestamp: Date.now(),
+            // Optional: Capture settings at time of generation
+            // modelSettings: state.modelSettings,
+            // environmentSettings: state.environmentSettings,
+          };
+          return {
+            history: [newHistoryEntry, ...state.history].slice(0, 20), // Limit history size
+          };
+        }),
       clearHistory: () => set({ history: [] }),
+      // Optional: Implement restoreFromHistory action
+      // restoreFromHistory: (id) => {
+      //   const historyEntry = get().history.find(h => h.id === id);
+      //   if (historyEntry) {
+      //     set({
+      //       originalImage: historyEntry.originalImage,
+      //       generatedImage: historyEntry.generatedImage,
+      //       // Optional: Restore settings if saved
+      //       // modelSettings: historyEntry.modelSettings || get().modelSettings,
+      //       // environmentSettings: historyEntry.environmentSettings || get().environmentSettings,
+      //       isLoading: false,
+      //       error: null,
+      //     });
+      //   }
+      // },
     }),
     {
       name: 'styleai-storage',
-      // Only persist these keys to avoid localStorage overflow
+      // Only persist settings and history
       partialize: (state) => ({
         modelSettings: state.modelSettings,
         environmentSettings: state.environmentSettings,
@@ -4929,6 +5818,7 @@ export const isDataURI = (uri: string): boolean => /^data:image\/[a-zA-Z]+;base6
 
 import { z } from 'zod';
 import { ValidationError } from './errors';
+import { isDataURI } from './utils';
 
 // Base model settings schema
 export const modelSettingsSchema = z.object({
@@ -5053,100 +5943,485 @@ export type GenerationError = {
 };
 </file>
 
+<file path="tailwind.config.ts">
+import type { Config } from "tailwindcss";
+
+export default {
+  content: [
+    "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+  ],
+} satisfies Config;
+</file>
+
+<file path="src/components/ClothingUpload.tsx">
+"use client";
+
+import { useState, useCallback } from 'react';
+import { Button } from "@/components/ui/button"; // Keep Button if needed for manual select fallback
+import { Progress } from "@/components/ui/progress"; // Import Progress
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // Import Alert
+import { useDropzone } from 'react-dropzone';
+import { FileImage, Upload, CheckCircle, AlertCircle } from 'lucide-react'; // Import icons
+import { useGenerationStore } from '@/lib/store';
+import { cn } from "@/lib/utils"; // Import cn for conditional classes
+
+const ClothingUpload = () => {
+  // Removed local image state
+  const { setOriginalImage } = useGenerationStore();
+  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    const file = acceptedFiles[0];
+    if (!file) return;
+
+    setUploadStatus('uploading');
+    setUploadProgress(0);
+    setUploadError(null);
+
+    const reader = new FileReader();
+
+    // Simulate progress (replace with actual progress if using a real upload API)
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += 10;
+      if (progress <= 90) { // Stop simulation before onload completes it
+        setUploadProgress(progress);
+      } else {
+        clearInterval(interval);
+      }
+    }, 100); // Adjust interval timing as needed
+
+    reader.onloadend = () => {
+      clearInterval(interval); // Ensure interval is cleared
+      const imageUrl = reader.result as string;
+      setOriginalImage(imageUrl); // Set image in store
+      setUploadProgress(100);
+      setUploadStatus('success');
+      // Optionally reset status after a delay
+      setTimeout(() => {
+        setUploadStatus('idle');
+        setUploadProgress(0);
+      }, 3000); // Reset after 3 seconds
+    };
+
+    reader.onerror = () => {
+      clearInterval(interval); // Ensure interval is cleared
+      console.error("File reading failed");
+      setUploadError("Failed to read the file. Please try again.");
+      setUploadStatus('error');
+      setUploadProgress(0);
+      // Optionally reset status after a delay
+       setTimeout(() => {
+        setUploadStatus('idle');
+        setUploadError(null);
+      }, 5000); // Reset after 5 seconds
+    };
+
+    reader.readAsDataURL(file);
+  }, [setOriginalImage]);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: { 'image/*': ['.jpeg', '.jpg', '.png', '.gif', '.webp'] },
+    multiple: false, // Ensure only one file is accepted
+    onDragEnter: () => {}, // Can add visual feedback hooks here
+    onDragLeave: () => {},
+  });
+
+  // Removed displayImage logic
+
+  return (
+    <div className="space-y-4"> {/* Added space-y */}
+      <h2 className="text-lg font-semibold">Upload Clothing Item</h2>
+      <div
+        {...getRootProps()}
+        className={cn(
+          "flex flex-col items-center justify-center w-full min-h-[12rem] p-6 border-2 border-dashed rounded-md cursor-pointer transition-colors", // Adjusted padding and min-height
+          isDragActive ? "border-primary bg-primary/10" : "border-muted-foreground/50 hover:border-primary/70",
+          uploadStatus === 'error' ? "border-destructive bg-destructive/10" : "",
+          uploadStatus === 'success' ? "border-green-500 bg-green-500/10" : ""
+        )}
+      >
+        <input {...getInputProps()} />
+        {uploadStatus === 'idle' && (
+          <div className="text-center text-muted-foreground">
+            <Upload className="mx-auto h-10 w-10 mb-3 text-gray-400" />
+            {isDragActive ? (
+              <p className="font-semibold">Drop the image here...</p>
+            ) : (
+              <>
+                <p className="font-semibold">Drag & drop or click to upload</p>
+                <p className="text-xs mt-1">PNG, JPG, GIF, WEBP</p>
+              </>
+            )}
+          </div>
+        )}
+        {uploadStatus === 'uploading' && (
+          <div className="w-full max-w-xs text-center">
+            <Progress value={uploadProgress} className="mb-2 h-2" />
+            <p className="text-sm font-medium">Uploading... {uploadProgress}%</p>
+          </div>
+        )}
+        {uploadStatus === 'success' && (
+          <div className="text-center text-green-600">
+            <CheckCircle className="mx-auto h-10 w-10 mb-3" />
+            <p className="font-semibold">Upload Complete!</p>
+          </div>
+        )}
+        {uploadStatus === 'error' && (
+           <div className="w-full text-center text-destructive">
+             <AlertCircle className="mx-auto h-10 w-10 mb-3" />
+             <p className="font-semibold">Upload Failed</p>
+             <p className="text-sm mt-1">{uploadError || "An unknown error occurred."}</p>
+           </div>
+        )}
+      </div>
+      {/* Removed the preview image section */}
+      {/* Removed the "No image uploaded yet" text section */}
+    </div>
+  );
+};
+
+export default ClothingUpload;
+</file>
+
+<file path="src/components/GenerationHistory.tsx">
+"use client";
+
+import { useEffect, useState } from 'react';
+import Image from 'next/image';
+import { useGenerationStore } from '@/lib/store';
+import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Trash2, History } from 'lucide-react'; // Added History icon
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"; // Import Accordion components
+
+export default function GenerationHistory() {
+  const { history, setOriginalImage, setGeneratedImage, clearHistory } = useGenerationStore();
+  const [visibleItems, setVisibleItems] = useState<string[]>([]);
+
+  // Intersection observer for lazy loading images
+  useEffect(() => {
+    if (typeof window === 'undefined' || !history.length) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            setVisibleItems(prev => [...new Set([...prev, entry.target.id])]);
+          }
+        });
+      },
+      { rootMargin: '200px' }
+    );
+    const historyItems = document.querySelectorAll('.history-item-card');
+    historyItems.forEach(item => observer.observe(item));
+    return () => {
+      historyItems.forEach(item => observer.unobserve(item));
+    };
+  }, [history]);
+
+  const handleRestore = (item: typeof history[0]) => {
+    setOriginalImage(item.originalImage);
+    setGeneratedImage(item.generatedImage);
+  };
+
+  // Use Accordion for collapsibility
+  return (
+    <Accordion type="single" collapsible className="w-full" defaultValue="history-item">
+      <AccordionItem value="history-item">
+        <AccordionTrigger className="text-xl font-semibold px-1 flex justify-between items-center w-full">
+          <div className="flex items-center"> {/* Group title and icon */}
+             <History className="h-5 w-5 mr-2" /> {/* Optional: Add icon */}
+             Generation History
+          </div>
+          {/* Clear button moved inside trigger for better alignment when collapsed */}
+          {history.length > 0 && (
+             <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation(); // Prevent accordion toggle
+                  clearHistory();
+                }}
+                className="text-muted-foreground hover:text-destructive mr-2" // Adjusted margin
+                aria-label="Clear History"
+              >
+                <Trash2 className="h-4 w-4 mr-1" /> Clear
+              </Button>
+          )}
+        </AccordionTrigger>
+        <AccordionContent>
+          {history.length === 0 ? (
+            <div className="text-center py-4 px-4 border rounded-md bg-muted/50 mt-2">
+              <p className="text-sm text-muted-foreground">No history yet.</p>
+              <p className="text-xs text-muted-foreground mt-1">Generated images will appear here.</p>
+            </div>
+          ) : (
+            <ScrollArea className="max-h-[40vh] w-full rounded-md border p-2 mt-2">
+              <div className="space-y-3 pr-2">
+                {history.map((item) => (
+                  <Card
+                    key={item.id}
+                    id={item.id}
+                    className="history-item-card cursor-pointer hover:bg-muted/80 transition-colors"
+                    onClick={() => handleRestore(item)}
+                  >
+                    <CardContent className="p-2 flex items-center gap-3">
+                      <div className="flex gap-1">
+                        {/* Original Thumbnail */}
+                        <div className="relative w-16 h-16 rounded overflow-hidden border bg-muted flex-shrink-0">
+                          {visibleItems.includes(item.id) ? (
+                            <Image
+                              src={item.originalImage}
+                              alt="Original Item Thumbnail"
+                              fill
+                              sizes="64px"
+                              className="object-cover"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <Skeleton className="w-full h-full" />
+                          )}
+                        </div>
+                        {/* Generated Thumbnail */}
+                        <div className="relative w-16 h-16 rounded overflow-hidden border bg-muted flex-shrink-0">
+                          {visibleItems.includes(item.id) ? (
+                            <Image
+                              src={item.generatedImage}
+                              alt="Generated Result Thumbnail"
+                              fill
+                              sizes="64px"
+                              className="object-cover"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <Skeleton className="w-full h-full" />
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-xs text-muted-foreground text-right flex-grow">
+                         <p>{new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                         <p>{new Date(item.timestamp).toLocaleDateString()}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
+  );
+}
+</file>
+
+<file path="next.config.ts">
+import type {NextConfig} from 'next';
+
+const nextConfig: NextConfig = {
+  /* config options here */
+  typescript: {
+    // Ensure type errors are caught during build
+    ignoreBuildErrors: false,
+  },
+  eslint: {
+    // Ensure linting errors are caught during build
+    ignoreDuringBuilds: false,
+  },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'pngimg.com',
+        port: '',
+        pathname: '/uploads/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'picsum.photos',
+        port: '',
+        pathname: '/**',
+      },
+      // Add any other image sources you might use
+    ],
+    // Optimize image formats
+    formats: ['image/avif', 'image/webp'],
+    // Set reasonable image cache duration
+    minimumCacheTTL: 60 * 60 * 24 * 7, // 1 week
+    // Disable static image imports if not needed
+    disableStaticImages: false,
+  },
+  // Disable x-powered-by header for slightly better security
+  poweredByHeader: false,
+};
+
+export default nextConfig;
+</file>
+
 <file path="src/app/globals.css">
-/* src/app/globals.css */
+/* Import Tailwind CSS v4 */
 @import "tailwindcss";
 
-/* Base body styles applied directly, not via @layer */
-body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  /* Default background and foreground are now handled by Tailwind's base styles
-     and CSS variable inheritance from :root/.dark */
+/*
+ * Tailwind CSS v4 Theme Definition
+ * Define all theme tokens (colors, spacing, fonts, breakpoints, etc.) here.
+ * These replace the `theme.extend` section from tailwind.config.js/ts.
+ */
+@theme {
+  /* Breakpoints (Example - Add as needed) */
+  /* --breakpoint-sm: 640px; */
+  /* --breakpoint-md: 768px; */
+  /* --breakpoint-lg: 1024px; */
+  /* --breakpoint-xl: 1280px; */
+
+  /* Radii (from original config) */
+  --radius: 0.75rem;
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  /* Base Colors (Light Mode - from :root) */
+  --color-background: hsl(220, 14%, 96%); /* Light Gray */
+  --color-foreground: hsl(220, 10%, 39%); /* Dark Gray */
+  --color-card: hsl(0, 0%, 100%);
+  --color-card-foreground: hsl(222.2, 84%, 4.9%);
+  --color-popover: hsl(0, 0%, 100%);
+  --color-popover-foreground: hsl(222.2, 84%, 4.9%);
+  --color-primary: hsl(220, 76%, 48%); /* Muted Blue */
+  --color-primary-foreground: hsl(0, 0%, 100%);
+  --color-secondary: hsl(210, 22%, 88%);
+  --color-secondary-foreground: hsl(222.2, 47.2%, 11.2%);
+  --color-muted: hsl(210, 40%, 96.1%);
+  --color-muted-foreground: hsl(215.4, 16.3%, 46.9%);
+  --color-accent: hsl(142, 76%, 36%); /* Teal */
+  --color-accent-foreground: hsl(0, 0%, 100%);
+  --color-destructive: hsl(0, 63%, 56%);
+  --color-destructive-foreground: hsl(210, 20%, 98%);
+  --color-border: hsl(214.3, 31.8%, 91.4%);
+  --color-input: hsl(214.3, 31.8%, 91.4%);
+  --color-ring: hsl(220, 71%, 59%);
+
+  /* Chart Colors */
+  --color-chart-1: hsl(12, 76%, 61%);
+  --color-chart-2: hsl(173, 58%, 39%);
+  --color-chart-3: hsl(197, 37%, 24%);
+  --color-chart-4: hsl(43, 74%, 66%);
+  --color-chart-5: hsl(27, 87%, 67%);
+
+  /* Sidebar Colors (Light Mode) */
+  --color-sidebar-background: hsl(0, 0%, 98%);
+  --color-sidebar-foreground: hsl(240, 5.3%, 26.1%);
+  --color-sidebar-primary: hsl(240, 5.9%, 10%);
+  --color-sidebar-primary-foreground: hsl(0, 0%, 98%);
+  --color-sidebar-accent: hsl(240, 4.8%, 95.9%);
+  --color-sidebar-accent-foreground: hsl(240, 5.9%, 10%);
+  --color-sidebar-border: hsl(220, 13%, 91%);
+  --color-sidebar-ring: hsl(217.2, 91.2%, 59.8%);
 }
 
+/* Base Layer - Apply foundational styles */
 @layer base {
-  /* Define CSS Variables */
-  :root {
-    --background: 220 14% 96%; /* Light Gray */
-    --foreground: 220 10% 39%; /* Dark Gray */
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 220 76% 48%; /* Muted Blue */
-    --primary-foreground: 0 0% 100%;
-    --secondary: 210 22% 88%;
-    --secondary-foreground: 222.2 47.2% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 142 76% 36%; /* Teal */
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 63% 56%;
-    --destructive-foreground: 210 20% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 220 71% 59%;
-    --radius: 0.75rem;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
+  /* Apply base variables for background/foreground */
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
+  /* Dark Mode Variable Overrides */
   .dark {
-    --background: 215 14% 13%; /* Dark Gray */
-    --foreground: 210 20% 98%; /* Off-White */
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 20% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 20% 98%;
-    --primary: 220 76% 48%; /* Muted Blue */
-    --primary-foreground: 222.2 47.2% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 20% 98%;
-    --muted: 216 34% 17%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 142 76% 36%; /* Teal */
-    --accent-foreground: 210 20% 98%;
-    --destructive: 0 63% 56%;
-    --destructive-foreground: 210 20% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    --color-background: hsl(215, 14%, 13%); /* Dark Gray */
+    --color-foreground: hsl(210, 20%, 98%); /* Off-White */
+    --color-card: hsl(222.2, 84%, 4.9%);
+    --color-card-foreground: hsl(210, 20%, 98%);
+    --color-popover: hsl(222.2, 84%, 4.9%);
+    --color-popover-foreground: hsl(210, 20%, 98%);
+    --color-primary: hsl(220, 76%, 48%); /* Muted Blue */
+    --color-primary-foreground: hsl(0, 0%, 100%);
+    --color-secondary: hsl(217.2, 32.6%, 17.5%);
+    --color-secondary-foreground: hsl(210, 20%, 98%);
+    --color-muted: hsl(216, 34%, 17%);
+    --color-muted-foreground: hsl(215, 20.2%, 65.1%);
+    --color-accent: hsl(142, 76%, 36%); /* Teal */
+    --color-accent-foreground: hsl(210, 20%, 98%);
+    --color-destructive: hsl(0, 63%, 56%);
+    --color-destructive-foreground: hsl(210, 20%, 98%);
+    --color-border: hsl(217.2, 32.6%, 17.5%);
+    --color-input: hsl(217.2, 32.6%, 17.5%);
+    --color-ring: hsl(224.3, 76.3%, 48%);
+
+    /* Dark Chart Colors */
+    --color-chart-1: hsl(220, 70%, 50%);
+    --color-chart-2: hsl(160, 60%, 45%);
+    --color-chart-3: hsl(30, 80%, 55%);
+    --color-chart-4: hsl(280, 65%, 60%);
+    --color-chart-5: hsl(340, 75%, 55%);
+
+    /* Dark Sidebar Colors */
+    --color-sidebar-background: hsl(240, 5.9%, 10%);
+    --color-sidebar-foreground: hsl(240, 4.8%, 95.9%);
+    --color-sidebar-primary: hsl(224.3, 76.3%, 48%);
+    --color-sidebar-primary-foreground: hsl(0, 0%, 100%);
+    --color-sidebar-accent: hsl(240, 3.7%, 15.9%);
+    --color-sidebar-accent-foreground: hsl(240, 4.8%, 95.9%);
+    --color-sidebar-border: hsl(240, 3.7%, 15.9%);
+    --color-sidebar-ring: hsl(217.2, 91.2%, 59.8%);
   }
 
-  /* REMOVED:
-     * { @apply border-border; }
-     body { @apply bg-background text-foreground; }
-     These were causing build errors and are handled by defaults.
-  */
+  *, ::before, ::after {
+    border-color: var(--color-border, currentColor);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-muted-foreground);
+    opacity: 1;
+  }
+
+  button:not(:disabled), [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  dialog {
+    margin: auto;
+  }
 }
 
-/* Custom utility-like components defined outside @layer base */
+/* Define Keyframes for Animations */
+@keyframes accordion-down {
+  from { height: 0; opacity: 0; }
+  to { height: var(--radix-accordion-content-height); opacity: 1; }
+}
+
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); opacity: 1; }
+  to { height: 0; opacity: 0; }
+}
+
+/* Define Custom Utilities using @utility */
+@utility animate-accordion-down {
+  animation: accordion-down 0.2s ease-out;
+}
+
+@utility animate-accordion-up {
+  animation: accordion-up 0.2s ease-out;
+}
+
+/* --- Custom Component Styles (Using @apply - Consider Refactoring Later) --- */
+/* These will now correctly use variables defined in @theme */
+/* For better v4 practice, consider using @utility or applying utilities directly in JSX */
 .container {
   @apply mx-auto px-4 py-8;
 }
@@ -5168,15 +6443,120 @@ body {
 }
 
 .form-input {
-  @apply shadow appearance-none border rounded w-full py-2 px-3 text-foreground leading-tight focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
+  @apply shadow appearance-none border border-input rounded-md w-full py-2 px-3 text-foreground leading-tight focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2;
 }
 
 .button-primary {
-  @apply bg-primary hover:bg-primary/90 text-white font-bold py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
+  @apply bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-2 px-4 rounded focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2;
 }
 
 .button-secondary {
-    @apply bg-secondary hover:bg-secondary/80 text-foreground font-bold py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
+  @apply bg-secondary hover:bg-secondary/80 text-secondary-foreground font-bold py-2 px-4 rounded focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2;
+}
+
+.image-display {
+  @apply mt-8 flex justify-center;
+}
+
+.image-display img {
+  @apply rounded-lg shadow-lg;
+}
+
+.history-container {
+  @apply mt-8;
+}
+
+.history-title {
+  @apply text-xl font-semibold mb-4;
+}
+
+.history-grid {
+  @apply grid grid-cols-3 gap-4;
+}
+
+.history-item {
+  @apply rounded-lg shadow-md overflow-hidden;
+}
+
+.history-item img {
+  @apply w-full h-auto;
+}
+
+  /* --- Optional: Restore V3 Defaults (Uncomment if needed) --- */
+  /*
+  *, ::before, ::after {
+    border-color: var(--color-border, currentColor);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-muted-foreground);
+    opacity: 1;
+  }
+
+  button:not(:disabled), [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  dialog {
+    margin: auto;
+  }
+  */
+
+
+/* Define Keyframes for Animations */
+@keyframes accordion-down {
+  from { height: 0; opacity: 0; }
+  to { height: var(--radix-accordion-content-height); opacity: 1; }
+}
+
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); opacity: 1; }
+  to { height: 0; opacity: 0; }
+}
+
+/* Define Custom Utilities using @utility */
+@utility animate-accordion-down {
+  animation: accordion-down 0.2s ease-out;
+}
+
+@utility animate-accordion-up {
+  animation: accordion-up 0.2s ease-out;
+}
+
+/* --- Custom Component Styles (Using @apply - Consider Refactoring Later) --- */
+/* These will now correctly use variables defined in @theme */
+/* For better v4 practice, consider using @utility or applying utilities directly in JSX */
+.container {
+  @apply mx-auto px-4 py-8;
+}
+
+.form-container {
+  @apply bg-card rounded-lg shadow-md p-6;
+}
+
+.form-title {
+  @apply text-2xl font-semibold mb-4 text-center;
+}
+
+.form-group {
+  @apply mb-4;
+}
+
+.form-label {
+  @apply block text-sm font-medium text-foreground mb-2;
+}
+
+.form-input {
+  @apply shadow appearance-none border border-input rounded-md w-full py-2 px-3 text-foreground leading-tight focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2;
+}
+
+.button-primary {
+  @apply bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-2 px-4 rounded focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2;
+}
+
+.button-secondary {
+  @apply bg-secondary hover:bg-secondary/80 text-secondary-foreground font-bold py-2 px-4 rounded focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2;
 }
 
 .image-display {
@@ -5219,335 +6599,131 @@ body {
     @apply grid-cols-1;
   }
 }
-
-/* Enhanced Styling with Tailwind Utilities (Example - these seem fine) */
-.rounded-full {
-    border-radius: 9999px;
-}
-
-.shadow-md {
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.shadow-lg {
-    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
-}
-
-.mt-8 {
-    margin-top: 2rem;
-}
-
-.mb-4 {
-    margin-bottom: 1rem;
-}
-
-.p-6 {
-    padding: 1.5rem;
-}
-</file>
-
-<file path="src/components/ClothingUpload.tsx">
-"use client";
-
-import { useState, useCallback } from 'react';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useDropzone } from 'react-dropzone';
-import { FileImage, Upload } from 'lucide-react';
-import { useGenerationStore } from '@/lib/store';
-
-const ClothingUpload = () => {
-  const [image, setImage] = useState<string | null>(null);
-  const { setOriginalImage } = useGenerationStore();
-
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    const file = acceptedFiles[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const imageUrl = reader.result as string;
-      setImage(imageUrl);
-      setOriginalImage(imageUrl);
-    };
-    reader.readAsDataURL(file);
-  }, [setOriginalImage]);
-
-  const {getRootProps, getInputProps, isDragActive} = useDropzone({onDrop, accept: {'image/*': ['.jpeg', '.jpg', '.png', '.gif', '.webp']}});
-
-  // Get the original image from the store
-  const { originalImage } = useGenerationStore();
-
-  // Use either the local state or the store value
-  const displayImage = image || originalImage;
-
-  return (
-    <div>
-      <h2 className="text-lg font-semibold mb-4">Upload Clothing Item</h2>
-      <div {...getRootProps()} className="flex flex-col items-center justify-center w-full h-48 border-2 border-primary border-dashed rounded-md bg-secondary text-foreground cursor-pointer">
-        <input {...getInputProps()} />
-        {
-          isDragActive ?
-            <p>Drop the files here ...</p> :
-            <div className="text-center">
-              <FileImage className="mx-auto h-6 w-6 mb-2" />
-              <p>Drag 'n' drop some files here, or click to select files</p>
-            </div>
-        }
-      </div>
-      {displayImage && (
-        <div className="mt-4">
-          <img src={displayImage} alt="Uploaded Clothing" className="max-w-full h-auto rounded-md" />
-        </div>
-      )}
-      {!displayImage && (
-        <div className="mt-4 text-center">
-          <p className="text-sm text-muted-foreground">No image uploaded yet.</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Upload an image of a clothing item to get started. You can drag and drop or click to select a file.
-          </p>
-        </div>
-      )}
-    </div>
-  );
-};
-
-export default ClothingUpload;
-</file>
-
-<file path="src/components/GenerationHistory.tsx">
-"use client";
-
-import { useEffect, useState } from 'react';
-import Image from 'next/image';
-import { useGenerationStore } from '@/lib/store';
-import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-
-export default function GenerationHistory() {
-  const { history, setOriginalImage, setGeneratedImage, clearHistory } = useGenerationStore();
-  const [visibleItems, setVisibleItems] = useState<string[]>([]);
-
-  // Implement intersection observer for lazy loading
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            setVisibleItems(prev => [...prev, entry.target.id]);
-          }
-        });
-      },
-      { rootMargin: '100px' }
-    );
-
-    const thumbnails = document.querySelectorAll('.history-thumbnail');
-    thumbnails.forEach(thumbnail => observer.observe(thumbnail));
-
-    return () => {
-      thumbnails.forEach(thumbnail => observer.unobserve(thumbnail));
-    };
-  }, [history]);
-
-  if (history.length === 0) {
-    return (
-      <div className="text-center py-8 flex flex-col items-center justify-center">
-        <p className="text-muted-foreground mb-2">No generation history yet</p>
-        <p className="text-xs text-muted-foreground max-w-xs">
-          Upload a clothing item and customize your model to generate images. Your history will appear here.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="mt-4">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-medium">Previous Generations</h3>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={clearHistory}
-        >
-          Clear History
-        </Button>
-      </div>
-
-      <ScrollArea className="h-[220px] w-full rounded-md border">
-        <div className="flex gap-4 p-4 overflow-x-auto">
-          {history.map((item) => (
-            <div
-              key={item.id}
-              id={item.id}
-              className="history-thumbnail flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
-              onClick={() => {
-                setOriginalImage(item.originalImage);
-                setGeneratedImage(item.generatedImage);
-              }}
-            >
-              <div className="relative w-40 h-40 rounded-md overflow-hidden border">
-                {visibleItems.includes(item.id) ? (
-                  <Image
-                    src={item.generatedImage}
-                    alt="Generated outfit"
-                    fill
-                    sizes="160px"
-                    className="object-cover"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-muted flex items-center justify-center">
-                    <span className="text-xs text-muted-foreground">Loading...</span>
-                  </div>
-                )}
-              </div>
-              <div className="mt-1 text-center">
-                <p className="text-xs font-medium truncate">
-                  Generation {history.length - history.indexOf(item)}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {new Date(item.timestamp).toLocaleDateString()} {new Date(item.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </ScrollArea>
-    </div>
-  );
-}
-</file>
-
-<file path="next.config.ts">
-import type {NextConfig} from 'next';
-
-const nextConfig: NextConfig = {
-  /* config options here */
-  typescript: {
-    // Ensure type errors are caught during build
-    ignoreBuildErrors: false,
-  },
-  eslint: {
-    // Ensure linting errors are caught during build
-    ignoreDuringBuilds: false,
-  },
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'pngimg.com',
-        port: '',
-        pathname: '/uploads/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'picsum.photos',
-        port: '',
-        pathname: '/**',
-      },
-      // Add any other image sources you might use
-    ],
-    // Optimize image formats
-    formats: ['image/avif', 'image/webp'],
-    // Set reasonable image cache duration
-    minimumCacheTTL: 60 * 60 * 24 * 7, // 1 week
-    // Disable static image imports if not needed
-    disableStaticImages: false,
-  },
-  // Improve build performance
-  experimental: {
-    // Enable React compiler for better performance
-    reactCompiler: false, // Disabled until babel-plugin-react-compiler is installed
-  },
-  // Disable x-powered-by header for slightly better security
-  poweredByHeader: false,
-};
-
-export default nextConfig;
 </file>
 
 <file path="src/app/page.tsx">
 "use client";
 
-import { useState, useEffect } from 'react';
 import ClothingUpload from '@/components/ClothingUpload';
 import ImageDisplay from '@/components/ImageDisplay';
 import ModelCustomization from '@/components/ModelCustomization';
 import GenerationHistory from '@/components/GenerationHistory';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import ImageDisplayCard from '@/components/ImageDisplayCard';
+// Removed Tabs imports
 import { Card, CardContent } from "@/components/ui/card";
 import { Toaster } from "@/components/ui/toaster";
 import { useGenerationStore } from "@/lib/store";
+// Removed useState, useEffect
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<string>('upload');
-  // Get generatedImage state to potentially influence initial tab, but don't load manually
-  const { generatedImage } = useGenerationStore();
+  // Removed activeTab state
+  const { originalImage } = useGenerationStore(); // Get originalImage to control customization visibility
 
-  // Remove the useEffect for manual localStorage loading.
-  // Zustand's persist middleware handles hydration automatically.
-
-  // Optional: Set initial tab based on hydrated state (might cause flicker, test needed)
-  // useEffect(() => {
-  //   if (generatedImage) {
-  //     setActiveTab('customize'); // Or keep 'upload' as default?
-  //   }
-  // }, [generatedImage]); // Run only when generatedImage changes after hydration
+  // Removed effect related to tabs
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl">
+    // Added min-h-screen and flex column structure for potential footer later
+    <div className="container mx-auto px-4 py-6 max-w-7xl flex flex-col min-h-screen">
       <Toaster />
-      <h1 className="text-3xl font-bold mb-6 text-center">StyleAI</h1>
+      <header className="mb-4 text-center">
+        <h1 className="text-3xl font-bold">StyleAI</h1>
+      </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left sidebar with controls - takes 4/12 columns on large screens */}
-        <div className="lg:col-span-4 space-y-6">
-          {/* Tabs for mobile and desktop */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-4">
-              <TabsTrigger value="upload">Upload</TabsTrigger>
-              <TabsTrigger value="customize">Customize</TabsTrigger>
-            </TabsList>
+      {/* Main content grid */}
+      <main className="flex-grow grid grid-cols-1 lg:grid-cols-[minmax(350px,_1fr)_2fr] xl:grid-cols-[minmax(350px,_1fr)_1.5fr_1.5fr] gap-4">
 
-            {activeTab === 'upload' ? (
-              <Card>
-                <CardContent className="p-4">
-                  <ClothingUpload />
-                </CardContent>
-              </Card>
-            ) : (
-              <Card>
-                <CardContent className="p-4">
-                  <ModelCustomization />
-                </CardContent>
-              </Card>
-            )}
-          </Tabs>
+        {/* Left Column: Controls */}
+        <div className="lg:col-span-1 flex flex-col h-full space-y-4">
+          {/* Upload Section */}
+          <Card className="flex flex-col">
+            {/* Consider adding CardHeader if needed */}
+            <CardContent className="p-4 flex-grow">
+              <ClothingUpload />
+            </CardContent>
+          </Card>
 
-          {/* Generation History - Always visible on desktop, collapsible on mobile */}
-          <div className="hidden lg:block">
-            <h2 className="text-xl font-semibold mb-4">Generation History</h2>
-            <GenerationHistory />
-          </div>
+          {/* Customization Section - Conditionally Rendered */}
+          {/* TODO: Add smooth transition (e.g., fade-in) */}
+          {originalImage && (
+            <Card className="flex flex-col">
+              {/* Consider adding CardHeader if needed */}
+              <CardContent className="p-4 flex-grow">
+                <ModelCustomization />
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Generation History - Unified */}
+          {/* TODO: Implement collapsible logic (e.g., Accordion/Details) */}
+          {/* TODO: Refine styling for history items (thumbnails) */}
+          {/* Generation History - Positioned at bottom */}
+          <div className="mt-auto pt-6 min-h-0">
+             <GenerationHistory />
+          </div>          {/* Generation History - Positioned at bottom */}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         </div>
 
-        {/* Main content area - takes 8/12 columns on large screens */}
-        <div className="lg:col-span-8">
+        {/* Right Column: Results */}
+        <div className="lg:hidden col-span-1">
           <ImageDisplay />
         </div>
 
-        {/* Collapsible history section for mobile only */}
-        <div className="block lg:hidden col-span-1">
-          <details className="mt-4 open:pb-4">
-            <summary className="text-xl font-semibold cursor-pointer hover:text-primary transition-colors">
-              Generation History
-            </summary>
-            <GenerationHistory />
-          </details>
+        {/* --- Columns 2 & 3: Results (Vary based on breakpoint) --- */}
+
+        {/* Original Image Card Container (LG: Column 2, XL: Column 2) */}
+        <div className="hidden lg:flex lg:col-start-2 lg:col-span-1 xl:col-start-2 xl:col-span-1 flex-col h-full">
+           <ImageDisplayCard type="original" />
         </div>
-      </div>
+
+        {/* Generated Result Card Container (LG: Column 2 (overlaps), XL: Column 3) */}
+         <div className="hidden lg:flex lg:col-start-2 lg:col-span-1 xl:col-start-3 xl:col-span-1 flex-col h-full">
+           <ImageDisplayCard type="generated" />
+         </div>
+
+        {/* Removed separate mobile history section */}
+      </main>
+
+      {/* Optional Footer can go here */}
+      {/* <footer className="mt-auto py-4 text-center text-muted-foreground">...</footer> */}
     </div>
   );
 }
@@ -5890,6 +7066,192 @@ export async function generateClothingImage(input: GenerateClothingImageInput): 
 }
 </file>
 
+<file path="src/components/ImageDisplay.tsx">
+"use client";
+
+import Image from 'next/image';
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Download, Share, UploadCloud, Wand2, AlertCircle } from 'lucide-react';
+import { useGenerationStore } from '@/lib/store';
+
+export default function ImageDisplay() {
+  const { originalImage, generatedImage, isLoading, error } = useGenerationStore();
+  const [originalLoaded, setOriginalLoaded] = useState(false);
+  const [generatedLoaded, setGeneratedLoaded] = useState(false);
+
+  // Reset loaded states if images change using useEffect
+  useEffect(() => {
+    setOriginalLoaded(false);
+  }, [originalImage]);
+
+  useEffect(() => {
+    setGeneratedLoaded(false);
+  }, [generatedImage]);
+
+
+  const handleDownload = async () => {
+    if (!generatedImage) return;
+    try {
+      const response = await fetch(generatedImage);
+      if (!response.ok) throw new Error('Failed to fetch image for download');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `styleai-generated-${Date.now()}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Download failed:", err);
+      // TODO: Add toast notification on failure
+    }
+  };
+
+  const handleShare = async () => {
+    // Check if generatedImage exists and navigator.share is supported
+    if (!generatedImage || typeof navigator.share !== 'function') return;
+    try {
+      const response = await fetch(generatedImage);
+      if (!response.ok) throw new Error('Failed to fetch image for sharing');
+      const blob = await response.blob();
+      const file = new File([blob], 'styleai-generated.png', { type: blob.type || 'image/png' });
+      await navigator.share({
+        title: 'My StyleAI Generated Image',
+        text: 'Check out this outfit I generated with StyleAI!',
+        files: [file]
+      });
+    } catch (err) {
+      console.error('Error sharing:', err);
+      // TODO: Add toast notification on failure
+    }
+  };
+
+  // Helper component for placeholder content
+  const PlaceholderContent = ({ icon: Icon, text }: { icon: React.ElementType, text: string }) => (
+    <div className="flex flex-col h-full items-center justify-center text-muted-foreground p-4">
+      <Icon className="h-16 w-16 mb-4 text-gray-400" />
+      <p className="text-center text-sm">{text}</p>
+    </div>
+  );
+
+  return (
+    <div className="grid grid-cols-1 gap-6">
+      {/* Original Image Card */}
+      <Card className="flex flex-col">
+        <CardHeader>
+          <CardTitle>Original Item</CardTitle>
+        </CardHeader>
+        <CardContent className="p-4 flex-grow">
+          <div className="relative aspect-square w-full overflow-hidden rounded-md bg-muted">
+            {originalImage ? (
+              <>
+                {!originalLoaded && <Skeleton className="absolute inset-0" />}
+                <Image
+                  src={originalImage}
+                  alt="Original clothing item"
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                  className={`object-contain transition-opacity duration-300 ${originalLoaded ? 'opacity-100' : 'opacity-0'}`}
+                  priority={true}
+                  onLoad={() => setOriginalLoaded(true)}
+                />
+              </>
+            ) : (
+              <PlaceholderContent icon={UploadCloud} text="Upload a clothing item to get started" />
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Generated Image Card */}
+      <Card className="flex flex-col">
+        <CardHeader>
+          <CardTitle>Generated Result</CardTitle>
+        </CardHeader>
+        <CardContent className="p-4 flex-grow">
+          <div className="relative aspect-square w-full overflow-hidden rounded-md bg-muted">
+            {isLoading ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center p-6">
+                <Skeleton className="h-full w-full" />
+                <p className="absolute bottom-4 text-sm text-center font-medium text-muted-foreground">
+                  AI is creating your image...
+                </p>
+              </div>
+            ) : error ? (
+              <div className="absolute inset-0 flex items-center justify-center p-4">
+                <Alert variant="destructive" className="w-full">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Generation Failed</AlertTitle>
+                  <AlertDescription>
+                    {error.message || 'An unexpected error occurred. Please try again.'}
+                  </AlertDescription>
+                </Alert>
+              </div>
+            ) : generatedImage ? (
+              <>
+                {!generatedLoaded && <Skeleton className="absolute inset-0" />}
+                <Image
+                  src={generatedImage}
+                  alt="Generated model wearing item"
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                  className={`object-contain transition-opacity duration-300 ${generatedLoaded ? 'opacity-100' : 'opacity-0'}`}
+                  quality={90}
+                  onLoad={() => setGeneratedLoaded(true)}
+                />
+              </>
+            ) : (
+              <PlaceholderContent icon={Wand2} text="Customize settings and click Generate" />
+            )}
+          </div>
+        </CardContent>
+
+        {generatedImage && !isLoading && !error && (
+          <CardFooter className="px-4 pb-4 pt-2 flex justify-end gap-2">
+            <TooltipProvider delayDuration={100}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="icon" onClick={handleDownload}>
+                    <Download className="h-4 w-4" />
+                    <span className="sr-only">Download Image</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Download Image</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            {/* Explicitly check if navigator and navigator.share function exist */}
+            {typeof navigator !== 'undefined' && typeof navigator.share === 'function' && (
+              <TooltipProvider delayDuration={100}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="icon" onClick={handleShare}>
+                      <Share className="h-4 w-4" />
+                      <span className="sr-only">Share Image</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Share Image</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </CardFooter>
+        )}
+      </Card>
+    </div>
+  );
+}
+</file>
+
 <file path="package.json">
 {
   "name": "nextn",
@@ -5925,31 +7287,28 @@ export async function generateClothingImage(input: GenerateClothingImageInput): 
     "@radix-ui/react-tabs": "^1.1.4",
     "@radix-ui/react-toast": "^1.2.7",
     "@radix-ui/react-tooltip": "^1.2.0",
-    "@tailwindcss/vite": "^4.1.3",
-    "@tanstack-query-firebase/react": "^2.0.0",
+    "@tailwindcss/postcss": "^4.1.3",
     "@tanstack/react-query": "^5.72.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
-    "firebase": "^11.6.0",
     "lucide-react": "^0.487.0",
     "next": "15.3.0",
     "patch-package": "^8.0.0",
     "react": "^19.1.0",
     "react-day-picker": "^9.6.5",
     "react-dom": "^19.1.0",
-    "react-dropzone": "*",
+    "react-dropzone": "^14.2.3",
     "react-hook-form": "^7.55.0",
     "recharts": "^2.15.2",
-    "server-perplexity-ask": "^0.1.3",
     "tailwind-merge": "^3.2.0",
     "tailwindcss-animate": "^1.0.7",
-    "uuid": "*",
+    "uuid": "^9.0.1",
     "zod": "^3.24.2",
     "zustand": "^5.0.3"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.1.3",
+    "@playwright/test": "^1.51.1",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -5960,225 +7319,55 @@ export async function generateClothingImage(input: GenerateClothingImageInput): 
 }
 </file>
 
-<file path="src/components/ImageDisplay.tsx">
-"use client";
-
-import Image from 'next/image';
-import { useState } from 'react';
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
-import { Download, Share } from 'lucide-react'; // Removed Undo
-import { useGenerationStore } from '@/lib/store';
-// Remove Progress import
-// import { Progress } from "@/components/ui/progress";
-
-export default function ImageDisplay() {
-  // Remove generationProgress from store destructuring
-  const { originalImage, generatedImage, isLoading, error } = useGenerationStore();
-  const [originalLoaded, setOriginalLoaded] = useState(false);
-  const [generatedLoaded, setGeneratedLoaded] = useState(false);
-
-  const handleDownload = async () => { // Add async keyword
-    if (!generatedImage) return;
-
-    try {
-      // Fetch the image data from the relative URL
-      const response = await fetch(generatedImage);
-      if (!response.ok) throw new Error('Failed to fetch image for download');
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-
-      // Create a temporary anchor element
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `styleai-generated-${Date.now()}.png`; // Suggest a filename
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url); // Clean up blob URL
-    } catch (error) {
-      console.error("Download failed:", error);
-      // Optionally show a toast message to the user
-    }
-  };
-
-  const handleShare = async () => { // Already async, but ensure it is
-    if (!generatedImage || !navigator.share) return;
-
-    try {
-      // Fetch the image data from the relative URL to create a Blob/File
-      const response = await fetch(generatedImage);
-      if (!response.ok) throw new Error('Failed to fetch image for sharing');
-      const blob = await response.blob();
-      const file = new File([blob], 'styleai-generated.png', { type: blob.type || 'image/png' });
-
-      await navigator.share({
-        title: 'My StyleAI Generated Image',
-        text: 'Check out this outfit I generated with StyleAI!',
-        files: [file]
-      });
-    } catch (error) {
-      console.error('Error sharing:', error);
-    }
-  };
-
-  return (
-    <div>
-      <h2 className="text-xl font-semibold mb-4">Results</h2>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Original Image */}
-        <Card className="h-full">
-          <CardContent className="p-4">
-            <h3 className="text-lg font-medium mb-2">Original Item</h3>
-            <div className="relative aspect-square w-full overflow-hidden rounded-md bg-muted">
-              {originalImage ? (
-                <>
-                  {!originalLoaded && <Skeleton className="absolute inset-0" />}
-                  <Image
-                    src={originalImage}
-                    alt="Original clothing item"
-                    fill
-                    sizes="(max-width: 1024px) 100vw, 50vw"
-                    className="object-contain"
-                    priority={true}
-                    onLoad={() => setOriginalLoaded(true)}
-                  />
-                </>
-              ) : (
-                <div className="flex h-full items-center justify-center text-muted-foreground">
-                  No image uploaded
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Generated Image */}
-        <Card className="h-full flex flex-col">
-          <CardContent className="p-4 flex-grow">
-            <h3 className="text-lg font-medium mb-2">Generated Result</h3>
-            <div className="relative aspect-square w-full overflow-hidden rounded-md bg-muted">
-              {isLoading ? (
-                <div className="absolute inset-0 flex flex-col items-center justify-center p-6">
-                  {/* Simple Spinner */}
-                  <div className="h-12 w-12 mb-4 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-                  {/* Remove Progress bar */}
-                  {/* <Progress value={generationProgress || 0} className="w-full mb-2" /> */}
-                  <p className="text-sm text-center font-medium">
-                    Generating your image...
-                    {/* Remove percentage display */}
-                  </p>
-                  {/* Remove detailed progress text */}
-                </div>
-              ) : error ? (
-                <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-destructive text-center">
-                  <p className="text-center">
-                    Error: {error.message || 'Something went wrong'}
-                  </p>
-                </div>
-              ) : generatedImage ? (
-                <>
-                  {!generatedLoaded && <Skeleton className="absolute inset-0" />}
-                  <Image
-                    src={generatedImage}
-                    alt="Generated model wearing item"
-                    fill
-                    sizes="(max-width: 1024px) 100vw, 50vw"
-                    className="object-contain"
-                    quality={90}
-                    onLoad={() => setGeneratedLoaded(true)}
-                  />
-                </>
-              ) : (
-                <div className="flex h-full items-center justify-center text-muted-foreground">
-                  <p className="text-center max-w-xs">
-                    Upload a clothing item and customize your model to generate an image
-                  </p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-
-          {generatedImage && !isLoading && (
-            <CardFooter className="px-4 pb-4 pt-0 flex justify-between">
-              <Button variant="outline" size="sm" onClick={handleDownload}>
-                <Download className="mr-2 h-4 w-4" /> Download
-              </Button>
-              {navigator.share && (
-                <Button variant="outline" size="sm" onClick={handleShare}>
-                  <Share className="mr-2 h-4 w-4" /> Share
-                </Button>
-              )}
-            </CardFooter>
-          )}
-        </Card>
-      </div>
-    </div>
-  );
-}
-</file>
-
 <file path="src/components/ModelCustomization.tsx">
 "use client";
 
+import { Gender, BodyType, AgeRange, Ethnicity, EnvironmentDescription, LightingStyle, LensStyle } from '@/lib/store';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { generateClothingImage } from '@/app/actions';
-// GenerateClothingImageInput is now imported via store or types/actions
-import { Input } from "@/components/ui/input"; // Keep Input for other fields if needed
+// Removed Input import as it's not used
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
-import { LoadingIndicator } from "@/components/ui/loading-indicator";
-// Keep only one import
+// Removed Card imports as they are handled by the parent in page.tsx
+import { Separator } from "@/components/ui/separator"; // Import Separator
+import { Loader2 } from 'lucide-react'; // Import spinner icon
+console.log("ModelCustomization loaded");
 import { useGenerationStore } from "@/lib/store";
-
+import { toAppError } from "@/lib/errors"; // Assuming error helper exists
 
 const ModelCustomization = () => {
-  // Get model, environment settings, and originalImage from the store
   const {
-    originalImage, // Get the uploaded image (base64)
+    originalImage,
     modelSettings,
     setModelSettings,
     environmentSettings,
     setEnvironmentSettings,
     setGeneratedImage,
     addToHistory,
+    isLoading, // Get isLoading state
     setLoading,
     setError
-    // Remove setGenerationProgress
   } = useGenerationStore();
 
-  // Destructure settings for easier access
   const { gender, bodyType, ageRange, ethnicity } = modelSettings;
   const { description: environment, lighting, lensStyle: lens } = environmentSettings;
 
-  // Create setter functions that update the store
-  const setGender = (value: string) => setModelSettings({ gender: value });
-  const setBodyType = (value: string) => setModelSettings({ bodyType: value });
-  const setAgeRange = (value: string) => setModelSettings({ ageRange: value });
-  const setEthnicity = (value: string) => setModelSettings({ ethnicity: value });
-  const setEnvironment = (value: string) => setEnvironmentSettings({ description: value });
-  const setLighting = (value: string) => setEnvironmentSettings({ lighting: value });
-  const setLens = (value: string) => setEnvironmentSettings({ lensStyle: value });
+  const setGender = (value: string) => setModelSettings({ gender: value as Gender });
+  const setBodyType = (value: string) => setModelSettings({ bodyType: value as BodyType });
+  const setAgeRange = (value: string) => setModelSettings({ ageRange: value as AgeRange });
+  const setEthnicity = (value: string) => setModelSettings({ ethnicity: value as Ethnicity });
+  const setEnvironment = (value: string) => setEnvironmentSettings({ description: value as EnvironmentDescription });
+  const setLighting = (value: string) => setEnvironmentSettings({ lighting: value as LightingStyle });
+  const setLens = (value: string) => setEnvironmentSettings({ lensStyle: value as LensStyle });
+
   const { toast } = useToast();
-  // Store actions are already destructured above
 
   const handleSubmit = async () => {
     try {
-      // Reset any previous errors
       setError(null);
-
-      // Start loading state
       setLoading(true);
-      // Remove setGenerationProgress call
-      // setGenerationProgress(10);
 
-      // Remove progress simulation interval
-      // const progressInterval = setInterval(() => { ... }, 800);
-
-      // Validate inputs - Check for originalImage from the store
       if (!originalImage) {
         toast({
           title: "Error",
@@ -6186,28 +7375,11 @@ const ModelCustomization = () => {
           variant: "destructive",
         });
         setLoading(false);
-        // Remove interval clearing and progress reset
-        // clearInterval(progressInterval);
-        // setGenerationProgress(0);
         return;
       }
 
-      // Remove manual localStorage saving - Zustand persist handles settings/history
-      // localStorage.setItem('clothingItemUrl', clothingItemUrl); // REMOVE
-      // localStorage.setItem('modelGender', gender); // REMOVE
-      // localStorage.setItem('modelBodyType', bodyType); // REMOVE
-      // localStorage.setItem('modelAgeRange', ageRange); // REMOVE
-      // localStorage.setItem('modelEthnicity', ethnicity); // REMOVE
-      // localStorage.setItem('environmentDescription', environment); // REMOVE
-      // localStorage.setItem('lightingStyle', lighting); // REMOVE
-      // localStorage.setItem('lensStyle', lens); // REMOVE
-
-      // Remove progress update
-      // setGenerationProgress(30);
-
-      // Call the generation function with originalImage (base64) from the store
       const result = await generateClothingImage({
-        clothingItemUrl: originalImage, // Pass the base64 Data URI
+        clothingItemUrl: originalImage,
         modelGender: gender,
         modelBodyType: bodyType,
         modelAgeRange: ageRange,
@@ -6217,11 +7389,7 @@ const ModelCustomization = () => {
         lensStyle: lens,
       });
 
-      // Remove progress update
-      // setGenerationProgress(80);
-
       if ('error' in result) {
-        // Handle error response with more detail
         let description = result.error.message;
         const errorCode = result.error.code;
         const errorDetails = result.error.details;
@@ -6235,41 +7403,24 @@ const ModelCustomization = () => {
         } else if (errorCode === 'PROCESSING_ERROR') {
            description = `Image Processing Error: ${result.error.message}`;
         }
-        // Add more specific cases as needed
 
-        setError({ message: description }); // Set potentially more specific message in store
+        setError({ message: description });
         toast({
           title: "Generation Failed",
-          description: description, // Use the potentially enhanced description
+          description: description,
           variant: "destructive",
         });
       } else if (result.generatedImageUrl && result.promptUsed) {
-        // Handle successful generation
-        // Remove progress update
-        // setGenerationProgress(100);
-
-        // Remove manual localStorage saving
-        // localStorage.setItem('generatedImageUrl', result.generatedImageUrl); // REMOVE
-        // localStorage.setItem('prompt', result.promptUsed); // REMOVE (prompt not stored anyway)
-        // localStorage.setItem('generationTimestamp', Date.now().toString()); // REMOVE
-
-        // Update the store with the result (which will soon be a persistent URL)
         setGeneratedImage(result.generatedImageUrl);
-
-        // Add to history in the store
         addToHistory({
-          originalImage: originalImage, // Use the correct variable from the store
+          originalImage: originalImage,
           generatedImage: result.generatedImageUrl
         });
-
-        // The results will be displayed in the ImageDisplay component through the store
-
         toast({
           title: "Image Generated",
           description: "Successfully generated image.",
         });
       } else {
-        // Handle unexpected response format
         setError({ message: "Received an invalid response from the generation service" });
         toast({
           title: "Generation Failed",
@@ -6278,10 +7429,8 @@ const ModelCustomization = () => {
         });
       }
     } catch (error: any) {
-      // Handle unexpected errors
-      // Handle unexpected errors during the action call itself
       console.error("Error calling generateClothingImage action:", error);
-      const appError = toAppError(error); // Use error helper
+      const appError = toAppError(error);
       setError({ message: appError.message });
       toast({
         title: "Error",
@@ -6289,20 +7438,18 @@ const ModelCustomization = () => {
         variant: "destructive",
       });
     } finally {
-      // Always reset loading state
       setLoading(false);
-      // Remove interval clearing and progress reset
-      // clearInterval(progressInterval);
-      // setTimeout(() => setGenerationProgress(0), 1500);
     }
   };
 
+  // TODO: Wrap this return in an animation component (e.g., Framer Motion) for smooth appearance
   return (
-    <div>
-      <h2 className="text-lg font-semibold mb-4">Customize Model</h2>
+    <div className="space-y-6"> {/* Added space-y */}
+      <h2 className="text-lg font-semibold">Customize Model & Scene</h2>
 
-      <div className="grid gap-4">
-         {/* Remove the Clothing URL input field */}
+      {/* Model Settings Group */}
+      <div className="space-y-4">
+        <h3 className="text-base font-medium text-muted-foreground">Model Details</h3>
         <div>
           <Label htmlFor="gender">Gender</Label>
           <Select value={gender} onValueChange={setGender}>
@@ -6361,6 +7508,13 @@ const ModelCustomization = () => {
             </SelectContent>
           </Select>
         </div>
+      </div>
+
+      <Separator />
+
+      {/* Environment Settings Group */}
+      <div className="space-y-4">
+        <h3 className="text-base font-medium text-muted-foreground">Scene Details</h3>
         <div>
           <Label htmlFor="environment">Environment</Label>
           <Select value={environment} onValueChange={setEnvironment}>
@@ -6407,15 +7561,19 @@ const ModelCustomization = () => {
         </div>
       </div>
 
-      {/* Remove the conditional LoadingIndicator based on generationProgress */}
-      {/* Loading state will be handled by ImageDisplay */}
-
       <Button
         onClick={handleSubmit}
-        className="mt-6 w-full"
-        disabled={isLoading} // Disable button based on isLoading state from store
+        className="w-full" // Removed mt-6 as parent div has space-y
+        disabled={isLoading || !originalImage} // Also disable if no original image
       >
-        {isLoading ? 'Generating...' : 'Generate'} {/* Optionally change button text */}
+        {isLoading ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Generating...
+          </>
+        ) : (
+          'Generate Image' // Changed text slightly
+        )}
       </Button>
     </div>
   );

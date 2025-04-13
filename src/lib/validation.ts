@@ -4,6 +4,7 @@
 
 import { z } from 'zod';
 import { ValidationError } from './errors';
+import { isDataURI } from './utils';
 
 // Base model settings schema
 export const modelSettingsSchema = z.object({

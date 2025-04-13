@@ -1,82 +1,125 @@
 "use client";
 
-import { useState, useEffect } from 'react';
 import ClothingUpload from '@/components/ClothingUpload';
 import ImageDisplay from '@/components/ImageDisplay';
 import ModelCustomization from '@/components/ModelCustomization';
 import GenerationHistory from '@/components/GenerationHistory';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import ImageDisplayCard from '@/components/ImageDisplayCard';
+// Removed Tabs imports
 import { Card, CardContent } from "@/components/ui/card";
 import { Toaster } from "@/components/ui/toaster";
 import { useGenerationStore } from "@/lib/store";
+// Removed useState, useEffect
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<string>('upload');
-  // Get generatedImage state to potentially influence initial tab, but don't load manually
-  const { generatedImage } = useGenerationStore();
+  // Removed activeTab state
+  const { originalImage } = useGenerationStore(); // Get originalImage to control customization visibility
 
-  // Remove the useEffect for manual localStorage loading.
-  // Zustand's persist middleware handles hydration automatically.
-
-  // Optional: Set initial tab based on hydrated state (might cause flicker, test needed)
-  // useEffect(() => {
-  //   if (generatedImage) {
-  //     setActiveTab('customize'); // Or keep 'upload' as default?
-  //   }
-  // }, [generatedImage]); // Run only when generatedImage changes after hydration
+  // Removed effect related to tabs
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl">
+    // Added min-h-screen and flex column structure for potential footer later
+    <div className="container mx-auto px-4 py-6 max-w-7xl flex flex-col min-h-screen">
       <Toaster />
-      <h1 className="text-3xl font-bold mb-6 text-center">StyleAI</h1>
+      <header className="mb-4 text-center">
+        <h1 className="text-3xl font-bold">StyleAI</h1>
+      </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left sidebar with controls - takes 4/12 columns on large screens */}
-        <div className="lg:col-span-4 space-y-6">
-          {/* Tabs for mobile and desktop */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-4">
-              <TabsTrigger value="upload">Upload</TabsTrigger>
-              <TabsTrigger value="customize">Customize</TabsTrigger>
-            </TabsList>
+      {/* Main content grid */}
+      <main className="flex-grow grid grid-cols-1 lg:grid-cols-[minmax(350px,_1fr)_2fr] xl:grid-cols-[minmax(350px,_1fr)_1.5fr_1.5fr] gap-4">
 
-            {activeTab === 'upload' ? (
-              <Card>
-                <CardContent className="p-4">
-                  <ClothingUpload />
-                </CardContent>
-              </Card>
-            ) : (
-              <Card>
-                <CardContent className="p-4">
-                  <ModelCustomization />
-                </CardContent>
-              </Card>
-            )}
-          </Tabs>
+        {/* Left Column: Controls */}
+        <div className="lg:col-span-1 flex flex-col h-full space-y-4">
+          {/* Upload Section */}
+          <Card className="flex flex-col">
+            {/* Consider adding CardHeader if needed */}
+            <CardContent className="p-4 flex-grow">
+              <ClothingUpload />
+            </CardContent>
+          </Card>
 
-          {/* Generation History - Always visible on desktop, collapsible on mobile */}
-          <div className="hidden lg:block">
-            <h2 className="text-xl font-semibold mb-4">Generation History</h2>
-            <GenerationHistory />
-          </div>
+          {/* Customization Section - Conditionally Rendered */}
+          {/* TODO: Add smooth transition (e.g., fade-in) */}
+          {originalImage && (
+            <Card className="flex flex-col">
+              {/* Consider adding CardHeader if needed */}
+              <CardContent className="p-4 flex-grow">
+                <ModelCustomization />
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Generation History - Unified */}
+          {/* TODO: Implement collapsible logic (e.g., Accordion/Details) */}
+          {/* TODO: Refine styling for history items (thumbnails) */}
+          {/* Generation History - Positioned at bottom */}
+          <div className="mt-auto pt-6 min-h-0">
+             <GenerationHistory />
+          </div>          {/* Generation History - Positioned at bottom */}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         </div>
 
-        {/* Main content area - takes 8/12 columns on large screens */}
-        <div className="lg:col-span-8">
+        {/* Right Column: Results */}
+        <div className="lg:hidden col-span-1">
           <ImageDisplay />
         </div>
 
-        {/* Collapsible history section for mobile only */}
-        <div className="block lg:hidden col-span-1">
-          <details className="mt-4 open:pb-4">
-            <summary className="text-xl font-semibold cursor-pointer hover:text-primary transition-colors">
-              Generation History
-            </summary>
-            <GenerationHistory />
-          </details>
+        {/* --- Columns 2 & 3: Results (Vary based on breakpoint) --- */}
+
+        {/* Original Image Card Container (LG: Column 2, XL: Column 2) */}
+        <div className="hidden lg:flex lg:col-start-2 lg:col-span-1 xl:col-start-2 xl:col-span-1 flex-col h-full">
+           <ImageDisplayCard type="original" />
         </div>
-      </div>
+
+        {/* Generated Result Card Container (LG: Column 2 (overlaps), XL: Column 3) */}
+         <div className="hidden lg:flex lg:col-start-2 lg:col-span-1 xl:col-start-3 xl:col-span-1 flex-col h-full">
+           <ImageDisplayCard type="generated" />
+         </div>
+
+        {/* Removed separate mobile history section */}
+      </main>
+
+      {/* Optional Footer can go here */}
+      {/* <footer className="mt-auto py-4 text-center text-muted-foreground">...</footer> */}
     </div>
   );
 }

@@ -1,17 +1,38 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+// Define specific literal types based on UI options and expected schema
+export type Gender = "male" | "female" | "non-binary";
+export type BodyType = "slim" | "athletic" | "average" | "plus-size";
+export type AgeRange = "18-25" | "26-35" | "36-45" | "46-60" | "60+";
+export type Ethnicity = "caucasian" | "black" | "asian" | "hispanic" | "middle-eastern" | "mixed";
+export type EnvironmentDescription = "studio" | "outdoor" | "urban" | "beach"; // Assuming these cover the schema
+export type LightingStyle = "natural" | "studio" | "soft" | "dramatic" | "bright";
+export type LensStyle = "portrait" | "fashion" | "product" | "editorial" | "casual";
+
+
+// Update type definitions to use literal types
 type ModelSettings = {
-  gender: string;
-  bodyType: string;
-  ageRange: string;
-  ethnicity: string;
+  gender: Gender;
+  bodyType: BodyType;
+  ageRange: AgeRange;
+  ethnicity: Ethnicity;
 };
 
 type EnvironmentSettings = {
-  description: string;
-  lighting: string;
-  lensStyle: string;
+  description: EnvironmentDescription; // Use specific type if schema requires it, otherwise string might be okay if description is freeform
+  lighting: LightingStyle;
+  lensStyle: LensStyle;
+};
+
+type HistoryEntry = {
+  id: string;
+  originalImage: string; // Can be base64 or URL
+  generatedImage: string; // Should be the persistent URL
+  timestamp: number;
+  // Optional: Could store settings used for this generation
+  // modelSettings?: ModelSettings;
+  // environmentSettings?: EnvironmentSettings;
 };
 
 type GenerationState = {
@@ -24,53 +45,44 @@ type GenerationState = {
   // UI state
   isLoading: boolean;
   error: { message: string } | null;
-  // Remove generationProgress state
-  // generationProgress: number | null;
-  // History (limited to prevent localStorage overflow)
-  history: Array<{
-    id: string;
-    originalImage: string;
-    generatedImage: string;
-    timestamp: number;
-  }>;
+  // History
+  history: Array<HistoryEntry>;
   // Actions
-  setOriginalImage: (url: string) => void;
-  setGeneratedImage: (url: string) => void;
+  setOriginalImage: (url: string | null) => void; // Allow null for clearing
+  setGeneratedImage: (url: string | null) => void; // Allow null for clearing
   setModelSettings: (settings: Partial<ModelSettings>) => void;
   setEnvironmentSettings: (settings: Partial<EnvironmentSettings>) => void;
   setLoading: (isLoading: boolean) => void;
   setError: (error: { message: string } | null) => void;
-  // Remove setGenerationProgress action type
-  // setGenerationProgress: (progress: number | null) => void;
   addToHistory: (entry: { originalImage: string; generatedImage: string }) => void;
   clearHistory: () => void;
+  // Optional: Action to restore state from history
+  // restoreFromHistory: (id: string) => void;
 };
 
 export const useGenerationStore = create<GenerationState>()(
   persist(
-    (set) => ({
-      // Initial state
+    (set, get) => ({ // Added get to access state in actions if needed
+      // Initial state (ensure values match literal types)
       originalImage: null,
       generatedImage: null,
       modelSettings: {
         gender: 'female',
         bodyType: 'average',
-        ageRange: '25-35',
+        ageRange: '26-35', // Corrected initial value
         ethnicity: 'caucasian',
       },
       environmentSettings: {
-        description: 'studio with white background',
+        description: 'studio', // Corrected initial value (assuming 'studio' is valid)
         lighting: 'soft',
         lensStyle: 'portrait',
       },
       isLoading: false,
       error: null,
-      // Remove initial generationProgress state
-      // generationProgress: null,
       history: [],
 
       // Actions
-      setOriginalImage: (url) => set({ originalImage: url }),
+      setOriginalImage: (url) => set({ originalImage: url, generatedImage: null, error: null }), // Clear generated/error on new upload
       setGeneratedImage: (url) => set({ generatedImage: url }),
       setModelSettings: (settings) =>
         set((state) => ({
@@ -82,25 +94,45 @@ export const useGenerationStore = create<GenerationState>()(
         })),
       setLoading: (isLoading) => set({ isLoading }),
       setError: (error) => set({ error }),
-      // Remove setGenerationProgress action implementation
-      // setGenerationProgress: (progress) => set({ generationProgress: progress }),
       addToHistory: (entry: { originalImage: string; generatedImage: string }) =>
-        set((state) => ({
-          history: [
-            {
-              id: Date.now().toString(),
-              originalImage: entry.originalImage, // Store original source (URL or base64)
-              generatedImage: entry.generatedImage, // Store the persistent URL
-              timestamp: Date.now(),
-            },
-            ...state.history,
-          ].slice(0, 20), // Limit to 20 entries
-        })),
+        set((state) => {
+          // Prevent adding duplicates based on generated image URL? (Optional)
+          // if (state.history.some(h => h.generatedImage === entry.generatedImage)) {
+          //   return {}; // Don't add if already exists
+          // }
+          const newHistoryEntry: HistoryEntry = {
+            id: Date.now().toString(),
+            originalImage: entry.originalImage,
+            generatedImage: entry.generatedImage,
+            timestamp: Date.now(),
+            // Optional: Capture settings at time of generation
+            // modelSettings: state.modelSettings,
+            // environmentSettings: state.environmentSettings,
+          };
+          return {
+            history: [newHistoryEntry, ...state.history].slice(0, 20), // Limit history size
+          };
+        }),
       clearHistory: () => set({ history: [] }),
+      // Optional: Implement restoreFromHistory action
+      // restoreFromHistory: (id) => {
+      //   const historyEntry = get().history.find(h => h.id === id);
+      //   if (historyEntry) {
+      //     set({
+      //       originalImage: historyEntry.originalImage,
+      //       generatedImage: historyEntry.generatedImage,
+      //       // Optional: Restore settings if saved
+      //       // modelSettings: historyEntry.modelSettings || get().modelSettings,
+      //       // environmentSettings: historyEntry.environmentSettings || get().environmentSettings,
+      //       isLoading: false,
+      //       error: null,
+      //     });
+      //   }
+      // },
     }),
     {
       name: 'styleai-storage',
-      // Only persist these keys to avoid localStorage overflow
+      // Only persist settings and history
       partialize: (state) => ({
         modelSettings: state.modelSettings,
         environmentSettings: state.environmentSettings,
