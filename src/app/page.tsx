@@ -5,117 +5,87 @@ import ImageDisplay from '@/components/ImageDisplay';
 import ModelCustomization from '@/components/ModelCustomization';
 import GenerationHistory from '@/components/GenerationHistory';
 import ImageDisplayCard from '@/components/ImageDisplayCard';
-// Removed Tabs imports
 import { Card, CardContent } from "@/components/ui/card";
 import { Toaster } from "@/components/ui/toaster";
 import { useGenerationStore } from "@/lib/store";
-// Removed useState, useEffect
+import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels"; // Import resizable panels
+import { cn } from "@/lib/utils"; // Import cn utility
 
 export default function Home() {
-  // Removed activeTab state
   const { originalImage } = useGenerationStore(); // Get originalImage to control customization visibility
 
-  // Removed effect related to tabs
-
   return (
-    // Added min-h-screen and flex column structure for potential footer later
-    <div className="container mx-auto px-4 py-6 max-w-7xl flex flex-col min-h-screen">
+    // Container setup for full dynamic height and overflow control
+    <div className="container mx-auto px-4 py-6 max-w-7xl flex flex-col h-dvh overflow-hidden">
       <Toaster />
-      <header className="mb-4 text-center">
+      <header className="mb-4 text-center flex-shrink-0">
         <h1 className="text-3xl font-bold">StyleAI</h1>
       </header>
 
-      {/* Main content grid */}
-      <main className="flex-grow grid grid-cols-1 lg:grid-cols-[minmax(350px,_1fr)_2fr] xl:grid-cols-[minmax(350px,_1fr)_1.5fr_1.5fr] gap-4">
+      {/* Main content area: Flex column for mobile, Flex row for large screens */}
+      <main className="min-h-0 flex-1 flex flex-col lg:flex-row">
 
-        {/* Left Column: Controls */}
-        <div className="lg:col-span-1 flex flex-col h-full space-y-4">
-          {/* Upload Section */}
-          <Card className="flex flex-col">
-            {/* Consider adding CardHeader if needed */}
-            <CardContent className="p-4 flex-grow">
-              <ClothingUpload />
-            </CardContent>
-          </Card>
-
-          {/* Customization Section - Conditionally Rendered */}
-          {/* TODO: Add smooth transition (e.g., fade-in) */}
-          {originalImage && (
-            <Card className="flex flex-col">
-              {/* Consider adding CardHeader if needed */}
-              <CardContent className="p-4 flex-grow">
-                <ModelCustomization />
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Generation History - Unified */}
-          {/* TODO: Implement collapsible logic (e.g., Accordion/Details) */}
-          {/* TODO: Refine styling for history items (thumbnails) */}
-          {/* Generation History - Positioned at bottom */}
-          <div className="mt-auto pt-6 min-h-0">
-             <GenerationHistory />
-          </div>          {/* Generation History - Positioned at bottom */}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        </div>
-
-        {/* Right Column: Results */}
-        <div className="lg:hidden col-span-1">
+        {/* Mobile Layout: Stacked Image Display (Only visible below lg) */}
+        <div className="lg:hidden mb-4"> {/* Added margin-bottom for mobile spacing */}
           <ImageDisplay />
         </div>
 
-        {/* --- Columns 2 & 3: Results (Vary based on breakpoint) --- */}
+        {/* Desktop Layout: Resizable Panels (Only visible lg and up) */}
+        <div className="hidden lg:flex flex-1 h-full"> {/* Use flex-1 to take available space */}
+          <PanelGroup direction="horizontal" className="flex-1 h-full">
 
-        {/* Original Image Card Container (LG: Column 2, XL: Column 2) */}
-        <div className="hidden lg:flex lg:col-start-2 lg:col-span-1 xl:col-start-2 xl:col-span-1 flex-col h-full">
-           <ImageDisplayCard type="original" />
+            {/* Panel 1: Controls */}
+            <Panel defaultSize={25} minSize={20} className="flex flex-col h-full overflow-hidden">
+              {/* Added overflow-hidden here, child div handles scroll */}
+              <div className="flex flex-col h-full space-y-4 p-1 overflow-y-auto"> {/* Added padding and scroll */}
+                {/* Upload Section */}
+                <Card className="flex flex-col flex-shrink-0"> {/* Added flex-shrink-0 */}
+                  <CardContent className="p-4 flex-grow">
+                    <ClothingUpload />
+                  </CardContent>
+                </Card>
+
+                {/* Customization Section - Conditionally Rendered with Transition */}
+                {/* Wrap Card in a div for transition control */}
+                <div
+                  className={cn(
+                    "transition-opacity duration-500 ease-in-out", // Transition classes
+                    originalImage ? "opacity-100" : "opacity-0" // Conditional opacity
+                  )}
+                >
+                  {originalImage && ( // Still need conditional rendering for layout shift
+                    <Card className="flex flex-col flex-shrink-0"> {/* Added flex-shrink-0 */}
+                      <CardContent className="p-4 flex-grow">
+                        <ModelCustomization />
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+
+                {/* Generation History - Positioned at bottom */}
+                <div className="mt-auto pt-6 min-h-0 flex-shrink-0"> {/* Added flex-shrink-0 */}
+                   <GenerationHistory />
+                </div>
+              </div>
+            </Panel>
+
+            <PanelResizeHandle className="w-[6px] bg-border hover:bg-primary cursor-col-resize transition-colors duration-200" />
+
+            {/* Panel 2: Original Image */}
+            <Panel defaultSize={37.5} minSize={25} className="flex flex-col h-full overflow-hidden p-4"> {/* Added padding */}
+               <ImageDisplayCard type="original" />
+            </Panel>
+
+            <PanelResizeHandle className="w-[6px] bg-border hover:bg-primary cursor-col-resize transition-colors duration-200" />
+
+            {/* Panel 3: Generated Image */}
+             <Panel defaultSize={37.5} minSize={25} className="flex flex-col h-full overflow-hidden p-1"> {/* Added padding */}
+               <ImageDisplayCard type="generated" />
+             </Panel>
+
+          </PanelGroup>
         </div>
 
-        {/* Generated Result Card Container (LG: Column 2 (overlaps), XL: Column 3) */}
-         <div className="hidden lg:flex lg:col-start-2 lg:col-span-1 xl:col-start-3 xl:col-span-1 flex-col h-full">
-           <ImageDisplayCard type="generated" />
-         </div>
-
-        {/* Removed separate mobile history section */}
       </main>
 
       {/* Optional Footer can go here */}

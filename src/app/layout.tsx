@@ -25,8 +25,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+    <html lang="en" className="h-full">
+      <body className={`h-full ${geistSans.variable} ${geistMono.variable} antialiased`}>
       <header className="bg-background border-b">
         <div className="container flex items-center justify-between h-16">
           <a href="/" className="text-2xl font-bold">

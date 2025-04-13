@@ -162,6 +162,56 @@ jobs:
 }
 </file>
 
+<file path="components.json">
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "default",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "tailwind.config.ts",
+    "css": "src/app/globals.css",
+    "baseColor": "neutral",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "aliases": {
+    "components": "@/components",
+    "utils": "@/lib/utils",
+    "ui": "@/components/ui",
+    "lib": "@/lib",
+    "hooks": "@/hooks"
+  },
+  "iconLibrary": "lucide"
+}
+</file>
+
+<file path="docs/blueprint.md">
+# **App Name**: StyleAI
+
+## Core Features:
+
+- Clothing Upload: Upload an image of a single clothing item.
+- Model Customization: Customize virtual model attributes (gender, body type, age range, ethnicity) and environment settings (background preset or custom description, lighting, lens/style).
+- Image Generation: Generate a new image depicting the customized model wearing the provided clothing item in the specified environment using Google Gemini as a tool.
+- Image Display: Display the generated image alongside the original upload for comparison, and the prompt used is shown.
+- History: Maintain a history of recent generations (relative image URLs) in the user's browser local storage, displayed as a clickable thumbnail gallery.
+
+## Style Guidelines:
+
+- Primary color: Neutral white or light gray for a clean and modern look.
+- Secondary color: A muted blue (#64B5F6) to provide a subtle accent.
+- Accent: Teal (#26A69A) for interactive elements and highlights.
+- Use a grid-based layout to maintain structure and alignment.
+- Use simple, modern icons to represent different customization options.
+- Subtle transitions when switching between customization options or loading generated images.
+
+## Original User Request:
+An web application that allows users to upload an image of a single clothing item. They can then customize virtual model attributes (gender, body type, age range, ethnicity) and environment settings (background preset or custom description, lighting, lens/style).
+Upon clicking 'Generate', the application sends the uploaded image (as base64 data) and selected settings to a backend service. The backend constructs a prompt, uses an AI (specifically Google Gemini per the PRD) with multimodal input (image + text prompt) to generate a new image depicting the customized model wearing the provided clothing item in the specified environment.
+The generated image is then displayed alongside the original upload for comparison, and the prompt used is shown. Successfully generated images are stored persistently on the server's local filesystem, with metadata saved in a local JSON file. A history of recent generations (relative image URLs) is maintained in the user's browser local storage, displayed as a clickable thumbnail gallery. The application is designed as a single-page app for anonymous users in its V1 implementation.
+</file>
+
 <file path="docs/ui-redesign-plan.md">
 Okay, let's create a detailed implementation plan for achieving the dynamic, fluid workspace using Tailwind CSS v4, based on your current codebase and best practices.
 Understanding Tailwind v4 Context:
@@ -473,6 +523,50 @@ export default defineConfig({
 });
 </file>
 
+<file path="README.md">
+# Firebase Studio
+
+This is a NextJS starter in Firebase Studio.
+
+To get started, take a look at src/app/page.tsx.
+</file>
+
+<file path="src/components/icons.ts">
+import {ArrowRight, Check, ChevronsUpDown, Circle, Copy, Edit, ExternalLink, File, HelpCircle, Home, Loader2, Mail, MessageSquare, Moon, Plus, PlusCircle, Search, Server, Settings, Share2, Shield, Sun, Trash, User, X, Workflow} from 'lucide-react';
+
+const Icons = {
+  arrowRight: ArrowRight,
+  check: Check,
+  chevronDown: ChevronsUpDown,
+  circle: Circle,
+  workflow: Workflow,
+  close: X,
+  copy: Copy,
+  dark: Moon,
+  edit: Edit,
+  externalLink: ExternalLink,
+  file: File,
+  help: HelpCircle,
+  home: Home,
+  light: Sun,
+  loader: Loader2,
+  mail: Mail,
+  messageSquare: MessageSquare,
+  plus: Plus,
+  plusCircle: PlusCircle,
+  search: Search,
+  server: Server,
+  settings: Settings,
+  share: Share2,
+  shield: Shield,
+  spinner: Loader2,
+  trash: Trash,
+  user: User,
+};
+
+export {Icons};
+</file>
+
 <file path="src/components/ImageDisplayCard.tsx">
 "use client";
 
@@ -634,6 +728,1533 @@ export default function ImageDisplayCard({ type }: ImageDisplayCardProps) {
         )}
      </Card>
    );
+}
+</file>
+
+<file path="src/components/ui/avatar.tsx">
+"use client"
+
+import * as React from "react"
+import * as AvatarPrimitive from "@radix-ui/react-avatar"
+
+import { cn } from "@/lib/utils"
+
+const Avatar = React.forwardRef<
+  React.ElementRef<typeof AvatarPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Root>
+>(({ className, ...props }, ref) => (
+  <AvatarPrimitive.Root
+    ref={ref}
+    className={cn(
+      "relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full",
+      className
+    )}
+    {...props}
+  />
+))
+Avatar.displayName = AvatarPrimitive.Root.displayName
+
+const AvatarImage = React.forwardRef<
+  React.ElementRef<typeof AvatarPrimitive.Image>,
+  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Image>
+>(({ className, ...props }, ref) => (
+  <AvatarPrimitive.Image
+    ref={ref}
+    className={cn("aspect-square h-full w-full", className)}
+    {...props}
+  />
+))
+AvatarImage.displayName = AvatarPrimitive.Image.displayName
+
+const AvatarFallback = React.forwardRef<
+  React.ElementRef<typeof AvatarPrimitive.Fallback>,
+  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Fallback>
+>(({ className, ...props }, ref) => (
+  <AvatarPrimitive.Fallback
+    ref={ref}
+    className={cn(
+      "flex h-full w-full items-center justify-center rounded-full bg-muted",
+      className
+    )}
+    {...props}
+  />
+))
+AvatarFallback.displayName = AvatarPrimitive.Fallback.displayName
+
+export { Avatar, AvatarImage, AvatarFallback }
+</file>
+
+<file path="src/components/ui/calendar.tsx">
+"use client"
+
+import * as React from "react"
+import { ChevronLeft, ChevronRight } from "lucide-react"
+import { DayPicker } from "react-day-picker"
+
+import { cn } from "@/lib/utils"
+import { buttonVariants } from "@/components/ui/button"
+
+export type CalendarProps = React.ComponentProps<typeof DayPicker>
+
+function Calendar({
+  className,
+  classNames,
+  showOutsideDays = true,
+  ...props
+}: CalendarProps) {
+  return (
+    <DayPicker
+      showOutsideDays={showOutsideDays}
+      className={cn("p-3", className)}
+      classNames={{
+        months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
+        month: "space-y-4",
+        caption: "flex justify-center pt-1 relative items-center",
+        caption_label: "text-sm font-medium",
+        nav: "space-x-1 flex items-center",
+        nav_button: cn(
+          buttonVariants({ variant: "outline" }),
+          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100"
+        ),
+        nav_button_previous: "absolute left-1",
+        nav_button_next: "absolute right-1",
+        table: "w-full border-collapse space-y-1",
+        head_row: "flex",
+        head_cell:
+          "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
+        row: "flex w-full mt-2",
+        cell: "h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+        day: cn(
+          buttonVariants({ variant: "ghost" }),
+          "h-9 w-9 p-0 font-normal aria-selected:opacity-100"
+        ),
+        day_range_end: "day-range-end",
+        day_selected:
+          "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+        day_today: "bg-accent text-accent-foreground",
+        day_outside:
+          "day-outside text-muted-foreground aria-selected:bg-accent/50 aria-selected:text-muted-foreground",
+        day_disabled: "text-muted-foreground opacity-50",
+        day_range_middle:
+          "aria-selected:bg-accent aria-selected:text-accent-foreground",
+        day_hidden: "invisible",
+        ...classNames,
+      }}
+      components={{
+        IconLeft: ({ className, ...props }) => (
+          <ChevronLeft className={cn("h-4 w-4", className)} {...props} />
+        ),
+        IconRight: ({ className, ...props }) => (
+          <ChevronRight className={cn("h-4 w-4", className)} {...props} />
+        ),
+      }}
+      {...props}
+    />
+  )
+}
+Calendar.displayName = "Calendar"
+
+export { Calendar }
+</file>
+
+<file path="src/components/ui/form.tsx">
+"use client"
+
+import * as React from "react"
+import * as LabelPrimitive from "@radix-ui/react-label"
+import { Slot } from "@radix-ui/react-slot"
+import {
+  Controller,
+  FormProvider,
+  useFormContext,
+  type ControllerProps,
+  type FieldPath,
+  type FieldValues,
+} from "react-hook-form"
+
+import { cn } from "@/lib/utils"
+import { Label } from "@/components/ui/label"
+
+const Form = FormProvider
+
+type FormFieldContextValue<
+  TFieldValues extends FieldValues = FieldValues,
+  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
+> = {
+  name: TName
+}
+
+const FormFieldContext = React.createContext<FormFieldContextValue>(
+  {} as FormFieldContextValue
+)
+
+const FormField = <
+  TFieldValues extends FieldValues = FieldValues,
+  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
+>({
+  ...props
+}: ControllerProps<TFieldValues, TName>) => {
+  return (
+    <FormFieldContext.Provider value={{ name: props.name }}>
+      <Controller {...props} />
+    </FormFieldContext.Provider>
+  )
+}
+
+const useFormField = () => {
+  const fieldContext = React.useContext(FormFieldContext)
+  const itemContext = React.useContext(FormItemContext)
+  const { getFieldState, formState } = useFormContext()
+
+  const fieldState = getFieldState(fieldContext.name, formState)
+
+  if (!fieldContext) {
+    throw new Error("useFormField should be used within <FormField>")
+  }
+
+  const { id } = itemContext
+
+  return {
+    id,
+    name: fieldContext.name,
+    formItemId: `${id}-form-item`,
+    formDescriptionId: `${id}-form-item-description`,
+    formMessageId: `${id}-form-item-message`,
+    ...fieldState,
+  }
+}
+
+type FormItemContextValue = {
+  id: string
+}
+
+const FormItemContext = React.createContext<FormItemContextValue>(
+  {} as FormItemContextValue
+)
+
+const FormItem = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => {
+  const id = React.useId()
+
+  return (
+    <FormItemContext.Provider value={{ id }}>
+      <div ref={ref} className={cn("space-y-2", className)} {...props} />
+    </FormItemContext.Provider>
+  )
+})
+FormItem.displayName = "FormItem"
+
+const FormLabel = React.forwardRef<
+  React.ElementRef<typeof LabelPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root>
+>(({ className, ...props }, ref) => {
+  const { error, formItemId } = useFormField()
+
+  return (
+    <Label
+      ref={ref}
+      className={cn(error && "text-destructive", className)}
+      htmlFor={formItemId}
+      {...props}
+    />
+  )
+})
+FormLabel.displayName = "FormLabel"
+
+const FormControl = React.forwardRef<
+  React.ElementRef<typeof Slot>,
+  React.ComponentPropsWithoutRef<typeof Slot>
+>(({ ...props }, ref) => {
+  const { error, formItemId, formDescriptionId, formMessageId } = useFormField()
+
+  return (
+    <Slot
+      ref={ref}
+      id={formItemId}
+      aria-describedby={
+        !error
+          ? `${formDescriptionId}`
+          : `${formDescriptionId} ${formMessageId}`
+      }
+      aria-invalid={!!error}
+      {...props}
+    />
+  )
+})
+FormControl.displayName = "FormControl"
+
+const FormDescription = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
+>(({ className, ...props }, ref) => {
+  const { formDescriptionId } = useFormField()
+
+  return (
+    <p
+      ref={ref}
+      id={formDescriptionId}
+      className={cn("text-sm text-muted-foreground", className)}
+      {...props}
+    />
+  )
+})
+FormDescription.displayName = "FormDescription"
+
+const FormMessage = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
+>(({ className, children, ...props }, ref) => {
+  const { error, formMessageId } = useFormField()
+  const body = error ? String(error?.message ?? "") : children
+
+  if (!body) {
+    return null
+  }
+
+  return (
+    <p
+      ref={ref}
+      id={formMessageId}
+      className={cn("text-sm font-medium text-destructive", className)}
+      {...props}
+    >
+      {body}
+    </p>
+  )
+})
+FormMessage.displayName = "FormMessage"
+
+export {
+  useFormField,
+  Form,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormDescription,
+  FormMessage,
+  FormField,
+}
+</file>
+
+<file path="src/components/ui/grid.tsx">
+"use client";
+
+import * as React from "react"
+
+import { cn } from "@/lib/utils"
+
+interface GridProps extends React.HTMLAttributes<HTMLDivElement> {
+  numColumns?: number;
+}
+
+const Grid = React.forwardRef<HTMLDivElement, GridProps>(
+  ({ className, numColumns = 1, children, ...props }, ref) => {
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          "grid",
+          `grid-cols-${numColumns}`,
+          className
+        )}
+        {...props}
+      >
+        {children}
+      </div>
+    )
+  }
+)
+Grid.displayName = "Grid"
+
+export { Grid }
+</file>
+
+<file path="src/components/ui/label.tsx">
+"use client"
+
+import * as React from "react"
+import * as LabelPrimitive from "@radix-ui/react-label"
+import { cva, type VariantProps } from "class-variance-authority"
+
+import { cn } from "@/lib/utils"
+
+const labelVariants = cva(
+  "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+)
+
+const Label = React.forwardRef<
+  React.ElementRef<typeof LabelPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root> &
+    VariantProps<typeof labelVariants>
+>(({ className, ...props }, ref) => (
+  <LabelPrimitive.Root
+    ref={ref}
+    className={cn(labelVariants(), className)}
+    {...props}
+  />
+))
+Label.displayName = LabelPrimitive.Root.displayName
+
+export { Label }
+</file>
+
+<file path="src/components/ui/loading-indicator.tsx">
+"use client";
+
+import React from 'react';
+import { Loader2, AlertCircle } from 'lucide-react';
+import { cva, type VariantProps } from 'class-variance-authority';
+import { cn } from '@/lib/utils';
+
+const loadingVariants = cva(
+  "flex items-center gap-2 rounded-md p-2 text-sm font-medium",
+  {
+    variants: {
+      variant: {
+        default: "bg-secondary text-secondary-foreground",
+        primary: "bg-primary/10 text-primary",
+        destructive: "bg-destructive/10 text-destructive",
+      },
+      size: {
+        sm: "text-xs py-1 px-2",
+        default: "text-sm py-2 px-3",
+        lg: "text-base py-3 px-4",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  }
+);
+
+export interface LoadingIndicatorProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof loadingVariants> {
+  status?: 'loading' | 'error' | 'success';
+  message?: string;
+  progress?: number; // 0-100
+}
+
+/**
+ * Enhanced loading indicator component with support for different states and progress
+ */
+export function LoadingIndicator({
+  className,
+  variant,
+  size,
+  status = 'loading',
+  message,
+  progress,
+  ...props
+}: LoadingIndicatorProps) {
+  return (
+    <div
+      className={cn(loadingVariants({ variant, size }), className)}
+      {...props}
+    >
+      {status === 'loading' && (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      )}
+      
+      {status === 'error' && (
+        <AlertCircle className="h-4 w-4 text-destructive" />
+      )}
+      
+      <span>
+        {message || (
+          status === 'loading' 
+            ? 'Loading...' 
+            : status === 'error'
+              ? 'An error occurred'
+              : 'Completed'
+        )}
+      </span>
+      
+      {typeof progress === 'number' && progress >= 0 && progress <= 100 && (
+        <div className="ml-auto flex items-center gap-2">
+          <div className="h-1.5 w-16 overflow-hidden rounded-full bg-background">
+            <div 
+              className="h-full bg-primary transition-all duration-300 ease-in-out" 
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <span className="text-xs tabular-nums">{Math.round(progress)}%</span>
+        </div>
+      )}
+    </div>
+  );
+}
+</file>
+
+<file path="src/components/ui/progress.tsx">
+"use client"
+
+import * as React from "react"
+import * as ProgressPrimitive from "@radix-ui/react-progress"
+
+import { cn } from "@/lib/utils"
+
+const Progress = React.forwardRef<
+  React.ElementRef<typeof ProgressPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof ProgressPrimitive.Root>
+>(({ className, value, ...props }, ref) => (
+  <ProgressPrimitive.Root
+    ref={ref}
+    className={cn(
+      "relative h-4 w-full overflow-hidden rounded-full bg-secondary",
+      className
+    )}
+    {...props}
+  >
+    <ProgressPrimitive.Indicator
+      className="h-full w-full flex-1 bg-primary transition-all"
+      style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
+    />
+  </ProgressPrimitive.Root>
+))
+Progress.displayName = ProgressPrimitive.Root.displayName
+
+export { Progress }
+</file>
+
+<file path="src/components/ui/radio-group.tsx">
+"use client"
+
+import * as React from "react"
+import * as RadioGroupPrimitive from "@radix-ui/react-radio-group"
+import { Circle } from "lucide-react"
+
+import { cn } from "@/lib/utils"
+
+const RadioGroup = React.forwardRef<
+  React.ElementRef<typeof RadioGroupPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Root>
+>(({ className, ...props }, ref) => {
+  return (
+    <RadioGroupPrimitive.Root
+      className={cn("grid gap-2", className)}
+      {...props}
+      ref={ref}
+    />
+  )
+})
+RadioGroup.displayName = RadioGroupPrimitive.Root.displayName
+
+const RadioGroupItem = React.forwardRef<
+  React.ElementRef<typeof RadioGroupPrimitive.Item>,
+  React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Item>
+>(({ className, ...props }, ref) => {
+  return (
+    <RadioGroupPrimitive.Item
+      ref={ref}
+      className={cn(
+        "aspect-square h-4 w-4 rounded-full border border-primary text-primary ring-offset-background focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+        className
+      )}
+      {...props}
+    >
+      <RadioGroupPrimitive.Indicator className="flex items-center justify-center">
+        <Circle className="h-2.5 w-2.5 fill-current text-current" />
+      </RadioGroupPrimitive.Indicator>
+    </RadioGroupPrimitive.Item>
+  )
+})
+RadioGroupItem.displayName = RadioGroupPrimitive.Item.displayName
+
+export { RadioGroup, RadioGroupItem }
+</file>
+
+<file path="src/components/ui/scroll-area.tsx">
+"use client"
+
+import * as React from "react"
+import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area"
+
+import { cn } from "@/lib/utils"
+
+const ScrollArea = React.forwardRef<
+  React.ElementRef<typeof ScrollAreaPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root>
+>(({ className, children, ...props }, ref) => (
+  <ScrollAreaPrimitive.Root
+    ref={ref}
+    className={cn("relative overflow-hidden", className)}
+    {...props}
+  >
+    <ScrollAreaPrimitive.Viewport className="h-full w-full rounded-[inherit]">
+      {children}
+    </ScrollAreaPrimitive.Viewport>
+    <ScrollBar />
+    <ScrollAreaPrimitive.Corner />
+  </ScrollAreaPrimitive.Root>
+))
+ScrollArea.displayName = ScrollAreaPrimitive.Root.displayName
+
+const ScrollBar = React.forwardRef<
+  React.ElementRef<typeof ScrollAreaPrimitive.ScrollAreaScrollbar>,
+  React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.ScrollAreaScrollbar>
+>(({ className, orientation = "vertical", ...props }, ref) => (
+  <ScrollAreaPrimitive.ScrollAreaScrollbar
+    ref={ref}
+    orientation={orientation}
+    className={cn(
+      "flex touch-none select-none transition-colors",
+      orientation === "vertical" &&
+        "h-full w-2.5 border-l border-l-transparent p-[1px]",
+      orientation === "horizontal" &&
+        "h-2.5 flex-col border-t border-t-transparent p-[1px]",
+      className
+    )}
+    {...props}
+  >
+    <ScrollAreaPrimitive.ScrollAreaThumb className="relative flex-1 rounded-full bg-border" />
+  </ScrollAreaPrimitive.ScrollAreaScrollbar>
+))
+ScrollBar.displayName = ScrollAreaPrimitive.ScrollAreaScrollbar.displayName
+
+export { ScrollArea, ScrollBar }
+</file>
+
+<file path="src/components/ui/separator.tsx">
+"use client"
+
+import * as React from "react"
+import * as SeparatorPrimitive from "@radix-ui/react-separator"
+
+import { cn } from "@/lib/utils"
+
+const Separator = React.forwardRef<
+  React.ElementRef<typeof SeparatorPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof SeparatorPrimitive.Root>
+>(
+  (
+    { className, orientation = "horizontal", decorative = true, ...props },
+    ref
+  ) => (
+    <SeparatorPrimitive.Root
+      ref={ref}
+      decorative={decorative}
+      orientation={orientation}
+      className={cn(
+        "shrink-0 bg-border",
+        orientation === "horizontal" ? "h-[1px] w-full" : "h-full w-[1px]",
+        className
+      )}
+      {...props}
+    />
+  )
+)
+Separator.displayName = SeparatorPrimitive.Root.displayName
+
+export { Separator }
+</file>
+
+<file path="src/components/ui/sheet.tsx">
+"use client"
+
+import * as React from "react"
+import * as SheetPrimitive from "@radix-ui/react-dialog"
+import { cva, type VariantProps } from "class-variance-authority"
+import { X } from "lucide-react"
+
+import { cn } from "@/lib/utils"
+
+const Sheet = SheetPrimitive.Root
+
+const SheetTrigger = SheetPrimitive.Trigger
+
+const SheetClose = SheetPrimitive.Close
+
+const SheetPortal = SheetPrimitive.Portal
+
+const SheetOverlay = React.forwardRef<
+  React.ElementRef<typeof SheetPrimitive.Overlay>,
+  React.ComponentPropsWithoutRef<typeof SheetPrimitive.Overlay>
+>(({ className, ...props }, ref) => (
+  <SheetPrimitive.Overlay
+    className={cn(
+      "fixed inset-0 z-50 bg-black/80  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      className
+    )}
+    {...props}
+    ref={ref}
+  />
+))
+SheetOverlay.displayName = SheetPrimitive.Overlay.displayName
+
+const sheetVariants = cva(
+  "fixed z-50 gap-4 bg-background p-6 shadow-lg transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500",
+  {
+    variants: {
+      side: {
+        top: "inset-x-0 top-0 border-b data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top",
+        bottom:
+          "inset-x-0 bottom-0 border-t data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
+        left: "inset-y-0 left-0 h-full w-3/4 border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-sm",
+        right:
+          "inset-y-0 right-0 h-full w-3/4  border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-sm",
+      },
+    },
+    defaultVariants: {
+      side: "right",
+    },
+  }
+)
+
+interface SheetContentProps
+  extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content>,
+    VariantProps<typeof sheetVariants> {}
+
+const SheetContent = React.forwardRef<
+  React.ElementRef<typeof SheetPrimitive.Content>,
+  SheetContentProps
+>(({ side = "right", className, children, ...props }, ref) => (
+  <SheetPortal>
+    <SheetOverlay />
+    <SheetPrimitive.Content
+      ref={ref}
+      className={cn(sheetVariants({ side }), className)}
+      {...props}
+    >
+      {children}
+      <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
+        <X className="h-4 w-4" />
+        <span className="sr-only">Close</span>
+      </SheetPrimitive.Close>
+    </SheetPrimitive.Content>
+  </SheetPortal>
+))
+SheetContent.displayName = SheetPrimitive.Content.displayName
+
+const SheetHeader = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
+  <div
+    className={cn(
+      "flex flex-col space-y-2 text-center sm:text-left",
+      className
+    )}
+    {...props}
+  />
+)
+SheetHeader.displayName = "SheetHeader"
+
+const SheetFooter = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
+  <div
+    className={cn(
+      "flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2",
+      className
+    )}
+    {...props}
+  />
+)
+SheetFooter.displayName = "SheetFooter"
+
+const SheetTitle = React.forwardRef<
+  React.ElementRef<typeof SheetPrimitive.Title>,
+  React.ComponentPropsWithoutRef<typeof SheetPrimitive.Title>
+>(({ className, ...props }, ref) => (
+  <SheetPrimitive.Title
+    ref={ref}
+    className={cn("text-lg font-semibold text-foreground", className)}
+    {...props}
+  />
+))
+SheetTitle.displayName = SheetPrimitive.Title.displayName
+
+const SheetDescription = React.forwardRef<
+  React.ElementRef<typeof SheetPrimitive.Description>,
+  React.ComponentPropsWithoutRef<typeof SheetPrimitive.Description>
+>(({ className, ...props }, ref) => (
+  <SheetPrimitive.Description
+    ref={ref}
+    className={cn("text-sm text-muted-foreground", className)}
+    {...props}
+  />
+))
+SheetDescription.displayName = SheetPrimitive.Description.displayName
+
+export {
+  Sheet,
+  SheetPortal,
+  SheetOverlay,
+  SheetTrigger,
+  SheetClose,
+  SheetContent,
+  SheetHeader,
+  SheetFooter,
+  SheetTitle,
+  SheetDescription,
+}
+</file>
+
+<file path="src/components/ui/skeleton.tsx">
+import { cn } from "@/lib/utils"
+
+function Skeleton({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className={cn("animate-pulse rounded-md bg-muted", className)}
+      {...props}
+    />
+  )
+}
+
+export { Skeleton }
+</file>
+
+<file path="src/components/ui/slider.tsx">
+"use client"
+
+import * as React from "react"
+import * as SliderPrimitive from "@radix-ui/react-slider"
+
+import { cn } from "@/lib/utils"
+
+const Slider = React.forwardRef<
+  React.ElementRef<typeof SliderPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof SliderPrimitive.Root>
+>(({ className, ...props }, ref) => (
+  <SliderPrimitive.Root
+    ref={ref}
+    className={cn(
+      "relative flex w-full touch-none select-none items-center",
+      className
+    )}
+    {...props}
+  >
+    <SliderPrimitive.Track className="relative h-2 w-full grow overflow-hidden rounded-full bg-secondary">
+      <SliderPrimitive.Range className="absolute h-full bg-primary" />
+    </SliderPrimitive.Track>
+    <SliderPrimitive.Thumb className="block h-5 w-5 rounded-full border-2 border-primary bg-background ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50" />
+  </SliderPrimitive.Root>
+))
+Slider.displayName = SliderPrimitive.Root.displayName
+
+export { Slider }
+</file>
+
+<file path="src/components/ui/toaster.tsx">
+"use client"
+
+import { useToast } from "@/hooks/use-toast"
+import {
+  Toast,
+  ToastClose,
+  ToastDescription,
+  ToastProvider,
+  ToastTitle,
+  ToastViewport,
+} from "@/components/ui/toast"
+
+export function Toaster() {
+  const { toasts } = useToast()
+
+  return (
+    <ToastProvider>
+      {toasts.map(function ({ id, title, description, action, ...props }) {
+        return (
+          <Toast key={id} {...props}>
+            <div className="grid gap-1">
+              {title && <ToastTitle>{title}</ToastTitle>}
+              {description && (
+                <ToastDescription>{description}</ToastDescription>
+              )}
+            </div>
+            {action}
+            <ToastClose />
+          </Toast>
+        )
+      })}
+      <ToastViewport />
+    </ToastProvider>
+  )
+}
+</file>
+
+<file path="src/hooks/use-mobile.tsx">
+import * as React from "react"
+
+const MOBILE_BREAKPOINT = 768
+
+export function useIsMobile() {
+  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)
+
+  React.useEffect(() => {
+    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
+    const onChange = () => {
+      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
+    }
+    mql.addEventListener("change", onChange)
+    setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
+    return () => mql.removeEventListener("change", onChange)
+  }, [])
+
+  return !!isMobile
+}
+</file>
+
+<file path="src/hooks/use-toast.ts">
+"use client"
+
+// Inspired by react-hot-toast library
+import * as React from "react"
+
+import type {
+  ToastActionElement,
+  ToastProps,
+} from "@/components/ui/toast"
+
+const TOAST_LIMIT = 1
+const TOAST_REMOVE_DELAY = 1000000
+
+type ToasterToast = ToastProps & {
+  id: string
+  title?: React.ReactNode
+  description?: React.ReactNode
+  action?: ToastActionElement
+}
+
+const actionTypes = {
+  ADD_TOAST: "ADD_TOAST",
+  UPDATE_TOAST: "UPDATE_TOAST",
+  DISMISS_TOAST: "DISMISS_TOAST",
+  REMOVE_TOAST: "REMOVE_TOAST",
+} as const
+
+let count = 0
+
+function genId() {
+  count = (count + 1) % Number.MAX_SAFE_INTEGER
+  return count.toString()
+}
+
+type ActionType = typeof actionTypes
+
+type Action =
+  | {
+      type: ActionType["ADD_TOAST"]
+      toast: ToasterToast
+    }
+  | {
+      type: ActionType["UPDATE_TOAST"]
+      toast: Partial<ToasterToast>
+    }
+  | {
+      type: ActionType["DISMISS_TOAST"]
+      toastId?: ToasterToast["id"]
+    }
+  | {
+      type: ActionType["REMOVE_TOAST"]
+      toastId?: ToasterToast["id"]
+    }
+
+interface State {
+  toasts: ToasterToast[]
+}
+
+const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
+
+const addToRemoveQueue = (toastId: string) => {
+  if (toastTimeouts.has(toastId)) {
+    return
+  }
+
+  const timeout = setTimeout(() => {
+    toastTimeouts.delete(toastId)
+    dispatch({
+      type: "REMOVE_TOAST",
+      toastId: toastId,
+    })
+  }, TOAST_REMOVE_DELAY)
+
+  toastTimeouts.set(toastId, timeout)
+}
+
+export const reducer = (state: State, action: Action): State => {
+  switch (action.type) {
+    case "ADD_TOAST":
+      return {
+        ...state,
+        toasts: [action.toast, ...state.toasts].slice(0, TOAST_LIMIT),
+      }
+
+    case "UPDATE_TOAST":
+      return {
+        ...state,
+        toasts: state.toasts.map((t) =>
+          t.id === action.toast.id ? { ...t, ...action.toast } : t
+        ),
+      }
+
+    case "DISMISS_TOAST": {
+      const { toastId } = action
+
+      // ! Side effects ! - This could be extracted into a dismissToast() action,
+      // but I'll keep it here for simplicity
+      if (toastId) {
+        addToRemoveQueue(toastId)
+      } else {
+        state.toasts.forEach((toast) => {
+          addToRemoveQueue(toast.id)
+        })
+      }
+
+      return {
+        ...state,
+        toasts: state.toasts.map((t) =>
+          t.id === toastId || toastId === undefined
+            ? {
+                ...t,
+                open: false,
+              }
+            : t
+        ),
+      }
+    }
+    case "REMOVE_TOAST":
+      if (action.toastId === undefined) {
+        return {
+          ...state,
+          toasts: [],
+        }
+      }
+      return {
+        ...state,
+        toasts: state.toasts.filter((t) => t.id !== action.toastId),
+      }
+  }
+}
+
+const listeners: Array<(state: State) => void> = []
+
+let memoryState: State = { toasts: [] }
+
+function dispatch(action: Action) {
+  memoryState = reducer(memoryState, action)
+  listeners.forEach((listener) => {
+    listener(memoryState)
+  })
+}
+
+type Toast = Omit<ToasterToast, "id">
+
+function toast({ ...props }: Toast) {
+  const id = genId()
+
+  const update = (props: ToasterToast) =>
+    dispatch({
+      type: "UPDATE_TOAST",
+      toast: { ...props, id },
+    })
+  const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id })
+
+  dispatch({
+    type: "ADD_TOAST",
+    toast: {
+      ...props,
+      id,
+      open: true,
+      onOpenChange: (open) => {
+        if (!open) dismiss()
+      },
+    },
+  })
+
+  return {
+    id: id,
+    dismiss,
+    update,
+  }
+}
+
+function useToast() {
+  const [state, setState] = React.useState<State>(memoryState)
+
+  React.useEffect(() => {
+    listeners.push(setState)
+    return () => {
+      const index = listeners.indexOf(setState)
+      if (index > -1) {
+        listeners.splice(index, 1)
+      }
+    }
+  }, [state])
+
+  return {
+    ...state,
+    toast,
+    dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
+  }
+}
+
+export { useToast, toast }
+</file>
+
+<file path="src/lib/cache-service.ts">
+/**
+ * Cache service for storing and retrieving generated images
+ * Provides TTL support, error handling, and consistent cache key generation
+ */
+
+import fs from 'fs/promises';
+import path from 'path';
+import crypto from 'crypto';
+import { existsSync, mkdirSync } from 'fs';
+import { GenerateClothingImageInput, GenerateClothingImageOutput } from '@/app/actions';
+
+// Types for cache entries
+export interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+  expiresAt: number | null; // null means no expiration
+}
+
+// Cache configuration
+interface CacheConfig {
+  basePath: string;
+  defaultTTL: number | null; // in milliseconds, null means no expiration
+}
+
+// Default configuration
+const DEFAULT_CONFIG: CacheConfig = {
+  basePath: path.join(process.cwd(), '.cache'),
+  defaultTTL: 7 * 24 * 60 * 60 * 1000, // 1 week in milliseconds
+};
+
+/**
+ * Service for caching generated images and related data
+ */
+export class CacheService {
+  private config: CacheConfig;
+
+  constructor(config: Partial<CacheConfig> = {}) {
+    this.config = { ...DEFAULT_CONFIG, ...config };
+    
+    // Ensure cache directory exists
+    if (!existsSync(this.config.basePath)) {
+      mkdirSync(this.config.basePath, { recursive: true });
+    }
+  }
+
+  /**
+   * Generate a consistent cache key from input parameters
+   */
+  public createCacheKey(input: GenerateClothingImageInput): string {
+    const data = {
+      clothingUrl: input.clothingItemUrl,
+      model: {
+        gender: input.modelGender,
+        bodyType: input.modelBodyType,
+        ageRange: input.modelAgeRange,
+        ethnicity: input.modelEthnicity,
+      },
+      environment: {
+        description: input.environmentDescription,
+        lighting: input.lightingStyle,
+        lens: input.lensStyle,
+      }
+    };
+    
+    // Create a deterministic hash of the input data
+    return crypto
+      .createHash('md5')
+      .update(JSON.stringify(data))
+      .digest('hex');
+  }
+
+  /**
+   * Get the full path to a cache file
+   */
+  private getCachePath(key: string): string {
+    return path.join(this.config.basePath, `${key}.json`);
+  }
+
+  /**
+   * Store data in the cache with optional TTL
+   */
+  public async set<T>(
+    key: string, 
+    data: T, 
+    ttl: number | null = this.config.defaultTTL
+  ): Promise<void> {
+    try {
+      const cachePath = this.getCachePath(key);
+      const entry: CacheEntry<T> = {
+        data,
+        timestamp: Date.now(),
+        expiresAt: ttl ? Date.now() + ttl : null,
+      };
+      
+      await fs.writeFile(cachePath, JSON.stringify(entry), 'utf-8');
+    } catch (error) {
+      console.error(`Cache write error for key ${key}:`, error);
+      // Fail gracefully - don't throw errors for cache operations
+    }
+  }
+
+  /**
+   * Retrieve data from the cache if it exists and is not expired
+   */
+  public async get<T>(key: string): Promise<T | null> {
+    try {
+      const cachePath = this.getCachePath(key);
+      
+      // Check if cache file exists
+      try {
+        await fs.access(cachePath);
+      } catch {
+        return null; // File doesn't exist
+      }
+      
+      // Read and parse cache file
+      const data = await fs.readFile(cachePath, 'utf-8');
+      const entry = JSON.parse(data) as CacheEntry<T>;
+      
+      // Check if entry is expired
+      if (entry.expiresAt && entry.expiresAt < Date.now()) {
+        // Expired entry - delete it asynchronously and return null
+        fs.unlink(cachePath).catch(err => 
+          console.error(`Failed to delete expired cache entry ${key}:`, err)
+        );
+        return null;
+      }
+      
+      return entry.data;
+    } catch (error) {
+      console.error(`Cache read error for key ${key}:`, error);
+      return null; // Fail gracefully
+    }
+  }
+
+  /**
+   * Delete a cache entry
+   */
+  public async delete(key: string): Promise<boolean> {
+    try {
+      const cachePath = this.getCachePath(key);
+      await fs.unlink(cachePath);
+      return true;
+    } catch (error) {
+      console.error(`Cache delete error for key ${key}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Clear all cache entries
+   */
+  public async clear(): Promise<boolean> {
+    try {
+      const files = await fs.readdir(this.config.basePath);
+      
+      await Promise.all(
+        files.map(file => 
+          fs.unlink(path.join(this.config.basePath, file))
+            .catch(err => console.error(`Failed to delete cache file ${file}:`, err))
+        )
+      );
+      
+      return true;
+    } catch (error) {
+      console.error('Cache clear error:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Check if a cache entry exists and is not expired
+   */
+  public async has(key: string): Promise<boolean> {
+    const result = await this.get(key);
+    return result !== null;
+  }
+}
+
+// Export a singleton instance for use throughout the application
+export const imageCache = new CacheService({
+  basePath: path.join(process.cwd(), '.cache', 'images'),
+});
+</file>
+
+<file path="src/lib/errors.ts">
+/**
+ * Custom error types for better error handling throughout the application
+ */
+
+// Base application error
+export class AppError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AppError';
+  }
+}
+
+// Validation errors
+export class ValidationError extends AppError {
+  constructor(
+    message: string,
+    public readonly field?: string,
+    public readonly details?: any
+  ) {
+    super(message);
+    this.name = 'ValidationError';
+  }
+}
+
+// API errors
+export class ApiError extends AppError {
+  constructor(
+    message: string,
+    public readonly statusCode?: number,
+    public readonly details?: any
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+// Image processing errors
+export class ImageProcessingError extends AppError {
+  constructor(
+    message: string,
+    public readonly originalError?: Error
+  ) {
+    super(message);
+    this.name = 'ImageProcessingError';
+  }
+}
+
+// Network errors
+export class NetworkError extends AppError {
+  constructor(
+    message: string,
+    public readonly originalError?: Error
+  ) {
+    super(message);
+    this.name = 'NetworkError';
+  }
+}
+
+// Cache errors
+export class CacheError extends AppError {
+  constructor(
+    message: string,
+    public readonly cacheKey?: string,
+    public readonly originalError?: Error
+  ) {
+    super(message);
+    this.name = 'CacheError';
+  }
+}
+
+// AI model errors
+export class AIModelError extends AppError {
+  constructor(
+    message: string,
+    public readonly modelName?: string,
+    public readonly details?: any
+  ) {
+    super(message);
+    this.name = 'AIModelError';
+  }
+}
+
+// Helper function to convert unknown errors to AppError
+export function toAppError(error: unknown): AppError {
+  if (error instanceof AppError) {
+    return error;
+  }
+  
+  if (error instanceof Error) {
+    // Check for specific error types based on message or properties
+    if (error.message.includes('network') || error.message.includes('fetch')) {
+      return new NetworkError(error.message, error);
+    }
+    
+    if (error.message.includes('image') || error.message.includes('png') || 
+        error.message.includes('jpg') || error.message.includes('webp')) {
+      return new ImageProcessingError(error.message, error);
+    }
+    
+    // Default to generic AppError
+    return new AppError(error.message);
+  }
+  
+  // For non-Error objects
+  return new AppError(
+    typeof error === 'string' 
+      ? error 
+      : 'An unknown error occurred'
+  );
+}
+
+// Error response type for API responses
+export type ErrorResponse = {
+  code: string;
+  message: string;
+  details?: any;
+};
+</file>
+
+<file path="src/lib/prompt-builder.ts">
+/**
+ * PromptBuilder - A utility for constructing well-structured prompts for the AI model
+ * 
+ * This helps create consistent, high-quality prompts that lead to better generation results.
+ */
+
+import { ModelSettings, EnvironmentSettings } from '@/types';
+
+export class PromptBuilder {
+  private sections: string[] = [];
+  
+  constructor() {
+    // Initialize with system context
+    this.addSystemContext();
+  }
+
+  /**
+   * Add system context to help guide the AI model
+   */
+  private addSystemContext(): this {
+    this.sections.push(
+      "Generate a photorealistic image of a virtual model wearing the provided clothing item with the following specifications:"
+    );
+    return this;
+  }
+
+  /**
+   * Add model attributes section
+   */
+  public addModelAttributes(settings: ModelSettings): this {
+    this.sections.push(
+      "Model Attributes:",
+      `- Gender: ${settings.gender}`,
+      `- Body Type: ${settings.bodyType}`,
+      `- Age Range: ${settings.ageRange}`,
+      `- Ethnicity: ${settings.ethnicity}`
+    );
+    return this;
+  }
+
+  /**
+   * Add environment settings section
+   */
+  public addEnvironmentSettings(settings: EnvironmentSettings): this {
+    this.sections.push(
+      "Environment Settings:",
+      `- Background: ${settings.description}`,
+      `- Lighting: ${settings.lighting}`,
+      `- Lens Style: ${settings.lensStyle}`
+    );
+    return this;
+  }
+
+  /**
+   * Add specific instructions for the AI model
+   */
+  public addInstructions(): this {
+    this.sections.push(
+      "Instructions:",
+      "- Create a photorealistic image that clearly shows the model wearing the provided clothing item",
+      "- Ensure the clothing item is clearly visible and properly fitted to the model",
+      "- Maintain natural proportions and realistic lighting",
+      "- The model should be in a natural pose that showcases the clothing item well",
+      "- The image should be high quality and suitable for e-commerce use"
+    );
+    return this;
+  }
+
+  /**
+   * Add custom section to the prompt
+   */
+  public addCustomSection(title: string, lines: string[]): this {
+    this.sections.push(title, ...lines.map(line => `- ${line}`));
+    return this;
+  }
+
+  /**
+   * Build the final prompt string
+   */
+  public build(): string {
+    return this.sections.join('\n\n');
+  }
+
+  /**
+   * Create a complete prompt from model and environment settings
+   */
+  public static createPrompt(
+    modelSettings: ModelSettings,
+    environmentSettings: EnvironmentSettings
+  ): string {
+    return new PromptBuilder()
+      .addModelAttributes(modelSettings)
+      .addEnvironmentSettings(environmentSettings)
+      .addInstructions()
+      .build();
+  }
+}
+</file>
+
+<file path="src/types/index.ts">
+/**
+ * Common types used throughout the application
+ */
+
+// Model settings
+export interface ModelSettings {
+  gender: 'male' | 'female' | 'non-binary';
+  bodyType: 'slim' | 'athletic' | 'average' | 'plus-size';
+  ageRange: '18-25' | '26-35' | '36-45' | '46-60' | '60+';
+  ethnicity: 'caucasian' | 'black' | 'asian' | 'hispanic' | 'middle-eastern' | 'mixed';
+}
+
+// Environment settings
+export interface EnvironmentSettings {
+  description: string;
+  lighting: 'natural' | 'studio' | 'soft' | 'dramatic' | 'bright';
+  lensStyle: 'portrait' | 'fashion' | 'product' | 'editorial' | 'casual';
+}
+
+// Generation result
+export interface GenerationResult {
+  originalImageUrl: string;
+  generatedImageUrl: string;
+  promptUsed: string;
+  timestamp: number;
+  modelSettings: ModelSettings;
+  environmentSettings: EnvironmentSettings;
+}
+
+// API response types
+export interface ApiResponse<T> {
+  data?: T;
+  error?: {
+    code: string;
+    message: string;
+    details?: any;
+  };
+}
+
+// Generation history entry
+export interface HistoryEntry {
+  id: string;
+  originalImage: string;
+  generatedImage: string;
+  timestamp: number;
+  modelSettings?: ModelSettings;
+  environmentSettings?: EnvironmentSettings;
 }
 </file>
 
@@ -1098,151 +2719,150 @@ test('get started link', async ({ page }) => {
 });
 </file>
 
-<file path="components.json">
+<file path="tsconfig.json">
 {
-  "$schema": "https://ui.shadcn.com/schema.json",
-  "style": "default",
-  "rsc": true,
-  "tsx": true,
-  "tailwind": {
-    "config": "tailwind.config.ts",
-    "css": "src/app/globals.css",
-    "baseColor": "neutral",
-    "cssVariables": true,
-    "prefix": ""
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
-  "aliases": {
-    "components": "@/components",
-    "utils": "@/lib/utils",
-    "ui": "@/components/ui",
-    "lib": "@/lib",
-    "hooks": "@/hooks"
-  },
-  "iconLibrary": "lucide"
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
 }
 </file>
 
-<file path="docs/blueprint.md">
-# **App Name**: StyleAI
+<file path="src/app/layout.tsx">
+import type {Metadata} from 'next';
+import {Geist, Geist_Mono} from 'next/font/google';
+import './globals.css';
+import {Avatar, AvatarFallback, AvatarImage} from "@/components/ui/avatar";
 
-## Core Features:
+const geistSans = Geist({
+  variable: '--font-geist-sans',
+  subsets: ['latin'],
+});
 
-- Clothing Upload: Upload an image of a single clothing item.
-- Model Customization: Customize virtual model attributes (gender, body type, age range, ethnicity) and environment settings (background preset or custom description, lighting, lens/style).
-- Image Generation: Generate a new image depicting the customized model wearing the provided clothing item in the specified environment using Google Gemini as a tool.
-- Image Display: Display the generated image alongside the original upload for comparison, and the prompt used is shown.
-- History: Maintain a history of recent generations (relative image URLs) in the user's browser local storage, displayed as a clickable thumbnail gallery.
+const geistMono = Geist_Mono({
+  variable: '--font-geist-mono',
+  subsets: ['latin'],
+});
 
-## Style Guidelines:
-
-- Primary color: Neutral white or light gray for a clean and modern look.
-- Secondary color: A muted blue (#64B5F6) to provide a subtle accent.
-- Accent: Teal (#26A69A) for interactive elements and highlights.
-- Use a grid-based layout to maintain structure and alignment.
-- Use simple, modern icons to represent different customization options.
-- Subtle transitions when switching between customization options or loading generated images.
-
-## Original User Request:
-An web application that allows users to upload an image of a single clothing item. They can then customize virtual model attributes (gender, body type, age range, ethnicity) and environment settings (background preset or custom description, lighting, lens/style).
-Upon clicking 'Generate', the application sends the uploaded image (as base64 data) and selected settings to a backend service. The backend constructs a prompt, uses an AI (specifically Google Gemini per the PRD) with multimodal input (image + text prompt) to generate a new image depicting the customized model wearing the provided clothing item in the specified environment.
-The generated image is then displayed alongside the original upload for comparison, and the prompt used is shown. Successfully generated images are stored persistently on the server's local filesystem, with metadata saved in a local JSON file. A history of recent generations (relative image URLs) is maintained in the user's browser local storage, displayed as a clickable thumbnail gallery. The application is designed as a single-page app for anonymous users in its V1 implementation.
-</file>
-
-<file path="README.md">
-# Firebase Studio
-
-This is a NextJS starter in Firebase Studio.
-
-To get started, take a look at src/app/page.tsx.
-</file>
-
-<file path="src/components/icons.ts">
-import {ArrowRight, Check, ChevronsUpDown, Circle, Copy, Edit, ExternalLink, File, HelpCircle, Home, Loader2, Mail, MessageSquare, Moon, Plus, PlusCircle, Search, Server, Settings, Share2, Shield, Sun, Trash, User, X, Workflow} from 'lucide-react';
-
-const Icons = {
-  arrowRight: ArrowRight,
-  check: Check,
-  chevronDown: ChevronsUpDown,
-  circle: Circle,
-  workflow: Workflow,
-  close: X,
-  copy: Copy,
-  dark: Moon,
-  edit: Edit,
-  externalLink: ExternalLink,
-  file: File,
-  help: HelpCircle,
-  home: Home,
-  light: Sun,
-  loader: Loader2,
-  mail: Mail,
-  messageSquare: MessageSquare,
-  plus: Plus,
-  plusCircle: PlusCircle,
-  search: Search,
-  server: Server,
-  settings: Settings,
-  share: Share2,
-  shield: Shield,
-  spinner: Loader2,
-  trash: Trash,
-  user: User,
+export const metadata: Metadata = {
+  title: 'StyleAI - Virtual Fashion App',
+  description: 'Virtually try on clothes using AI models.',
 };
 
-export {Icons};
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en">
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <header className="bg-background border-b">
+        <div className="container flex items-center justify-between h-16">
+          <a href="/" className="text-2xl font-bold">
+            StyleAI
+          </a>
+          <div className="flex items-center space-x-4">
+            <Avatar>
+              <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
+              <AvatarFallback>CN</AvatarFallback>
+            </Avatar>
+            <span className="text-sm font-medium">John Doe</span>
+          </div>
+        </div>
+      </header>
+      <main className="container mx-auto py-10">
+        {children}
+      </main>
+      </body>
+    </html>
+  );
+}
 </file>
 
-<file path="src/components/ui/avatar.tsx">
+<file path="src/components/ui/accordion.tsx">
 "use client"
 
 import * as React from "react"
-import * as AvatarPrimitive from "@radix-ui/react-avatar"
+import * as AccordionPrimitive from "@radix-ui/react-accordion"
+import { ChevronDown } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
-const Avatar = React.forwardRef<
-  React.ElementRef<typeof AvatarPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Root>
+const Accordion = AccordionPrimitive.Root
+
+const AccordionItem = React.forwardRef<
+  React.ElementRef<typeof AccordionPrimitive.Item>,
+  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Item>
 >(({ className, ...props }, ref) => (
-  <AvatarPrimitive.Root
+  <AccordionPrimitive.Item
     ref={ref}
-    className={cn(
-      "relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full",
-      className
-    )}
+    // V4 Fix: Added explicit border color
+    className={cn("border-b border-border", className)}
     {...props}
   />
 ))
-Avatar.displayName = AvatarPrimitive.Root.displayName
+AccordionItem.displayName = "AccordionItem"
 
-const AvatarImage = React.forwardRef<
-  React.ElementRef<typeof AvatarPrimitive.Image>,
-  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Image>
->(({ className, ...props }, ref) => (
-  <AvatarPrimitive.Image
-    ref={ref}
-    className={cn("aspect-square h-full w-full", className)}
-    {...props}
-  />
+const AccordionTrigger = React.forwardRef<
+  React.ElementRef<typeof AccordionPrimitive.Trigger>,
+  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Trigger>
+>(({ className, children, ...props }, ref) => (
+  <AccordionPrimitive.Header className="flex">
+    <AccordionPrimitive.Trigger
+      ref={ref}
+      className={cn(
+        "flex flex-1 items-center justify-between py-4 font-medium transition-all hover:underline [&[data-state=open]>svg]:rotate-180",
+        // No outline-none needed here usually, relies on browser default or ring
+        className
+      )}
+      {...props}
+    >
+      {children}
+      <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+    </AccordionPrimitive.Trigger>
+  </AccordionPrimitive.Header>
 ))
-AvatarImage.displayName = AvatarPrimitive.Image.displayName
+AccordionTrigger.displayName = AccordionPrimitive.Trigger.displayName
 
-const AvatarFallback = React.forwardRef<
-  React.ElementRef<typeof AvatarPrimitive.Fallback>,
-  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Fallback>
->(({ className, ...props }, ref) => (
-  <AvatarPrimitive.Fallback
+const AccordionContent = React.forwardRef<
+  React.ElementRef<typeof AccordionPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Content>
+>(({ className, children, ...props }, ref) => (
+  <AccordionPrimitive.Content
     ref={ref}
-    className={cn(
-      "flex h-full w-full items-center justify-center rounded-full bg-muted",
-      className
-    )}
+    // V4 Fix: Use custom utilities defined in globals.css
+    className="overflow-hidden text-sm transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down"
     {...props}
-  />
+  >
+    <div className={cn("pb-4 pt-0", className)}>{children}</div>
+  </AccordionPrimitive.Content>
 ))
-AvatarFallback.displayName = AvatarPrimitive.Fallback.displayName
 
-export { Avatar, AvatarImage, AvatarFallback }
+AccordionContent.displayName = AccordionPrimitive.Content.displayName
+
+export { Accordion, AccordionItem, AccordionTrigger, AccordionContent }
 </file>
 
 <file path="src/components/ui/badge.tsx">
@@ -1341,79 +2961,6 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 Button.displayName = "Button"
 
 export { Button, buttonVariants }
-</file>
-
-<file path="src/components/ui/calendar.tsx">
-"use client"
-
-import * as React from "react"
-import { ChevronLeft, ChevronRight } from "lucide-react"
-import { DayPicker } from "react-day-picker"
-
-import { cn } from "@/lib/utils"
-import { buttonVariants } from "@/components/ui/button"
-
-export type CalendarProps = React.ComponentProps<typeof DayPicker>
-
-function Calendar({
-  className,
-  classNames,
-  showOutsideDays = true,
-  ...props
-}: CalendarProps) {
-  return (
-    <DayPicker
-      showOutsideDays={showOutsideDays}
-      className={cn("p-3", className)}
-      classNames={{
-        months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
-        month: "space-y-4",
-        caption: "flex justify-center pt-1 relative items-center",
-        caption_label: "text-sm font-medium",
-        nav: "space-x-1 flex items-center",
-        nav_button: cn(
-          buttonVariants({ variant: "outline" }),
-          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100"
-        ),
-        nav_button_previous: "absolute left-1",
-        nav_button_next: "absolute right-1",
-        table: "w-full border-collapse space-y-1",
-        head_row: "flex",
-        head_cell:
-          "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
-        row: "flex w-full mt-2",
-        cell: "h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
-        day: cn(
-          buttonVariants({ variant: "ghost" }),
-          "h-9 w-9 p-0 font-normal aria-selected:opacity-100"
-        ),
-        day_range_end: "day-range-end",
-        day_selected:
-          "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-        day_today: "bg-accent text-accent-foreground",
-        day_outside:
-          "day-outside text-muted-foreground aria-selected:bg-accent/50 aria-selected:text-muted-foreground",
-        day_disabled: "text-muted-foreground opacity-50",
-        day_range_middle:
-          "aria-selected:bg-accent aria-selected:text-accent-foreground",
-        day_hidden: "invisible",
-        ...classNames,
-      }}
-      components={{
-        IconLeft: ({ className, ...props }) => (
-          <ChevronLeft className={cn("h-4 w-4", className)} {...props} />
-        ),
-        IconRight: ({ className, ...props }) => (
-          <ChevronRight className={cn("h-4 w-4", className)} {...props} />
-        ),
-      }}
-      {...props}
-    />
-  )
-}
-Calendar.displayName = "Calendar"
-
-export { Calendar }
 </file>
 
 <file path="src/components/ui/card.tsx">
@@ -2227,220 +3774,6 @@ export {
 }
 </file>
 
-<file path="src/components/ui/form.tsx">
-"use client"
-
-import * as React from "react"
-import * as LabelPrimitive from "@radix-ui/react-label"
-import { Slot } from "@radix-ui/react-slot"
-import {
-  Controller,
-  FormProvider,
-  useFormContext,
-  type ControllerProps,
-  type FieldPath,
-  type FieldValues,
-} from "react-hook-form"
-
-import { cn } from "@/lib/utils"
-import { Label } from "@/components/ui/label"
-
-const Form = FormProvider
-
-type FormFieldContextValue<
-  TFieldValues extends FieldValues = FieldValues,
-  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
-> = {
-  name: TName
-}
-
-const FormFieldContext = React.createContext<FormFieldContextValue>(
-  {} as FormFieldContextValue
-)
-
-const FormField = <
-  TFieldValues extends FieldValues = FieldValues,
-  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
->({
-  ...props
-}: ControllerProps<TFieldValues, TName>) => {
-  return (
-    <FormFieldContext.Provider value={{ name: props.name }}>
-      <Controller {...props} />
-    </FormFieldContext.Provider>
-  )
-}
-
-const useFormField = () => {
-  const fieldContext = React.useContext(FormFieldContext)
-  const itemContext = React.useContext(FormItemContext)
-  const { getFieldState, formState } = useFormContext()
-
-  const fieldState = getFieldState(fieldContext.name, formState)
-
-  if (!fieldContext) {
-    throw new Error("useFormField should be used within <FormField>")
-  }
-
-  const { id } = itemContext
-
-  return {
-    id,
-    name: fieldContext.name,
-    formItemId: `${id}-form-item`,
-    formDescriptionId: `${id}-form-item-description`,
-    formMessageId: `${id}-form-item-message`,
-    ...fieldState,
-  }
-}
-
-type FormItemContextValue = {
-  id: string
-}
-
-const FormItemContext = React.createContext<FormItemContextValue>(
-  {} as FormItemContextValue
-)
-
-const FormItem = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => {
-  const id = React.useId()
-
-  return (
-    <FormItemContext.Provider value={{ id }}>
-      <div ref={ref} className={cn("space-y-2", className)} {...props} />
-    </FormItemContext.Provider>
-  )
-})
-FormItem.displayName = "FormItem"
-
-const FormLabel = React.forwardRef<
-  React.ElementRef<typeof LabelPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root>
->(({ className, ...props }, ref) => {
-  const { error, formItemId } = useFormField()
-
-  return (
-    <Label
-      ref={ref}
-      className={cn(error && "text-destructive", className)}
-      htmlFor={formItemId}
-      {...props}
-    />
-  )
-})
-FormLabel.displayName = "FormLabel"
-
-const FormControl = React.forwardRef<
-  React.ElementRef<typeof Slot>,
-  React.ComponentPropsWithoutRef<typeof Slot>
->(({ ...props }, ref) => {
-  const { error, formItemId, formDescriptionId, formMessageId } = useFormField()
-
-  return (
-    <Slot
-      ref={ref}
-      id={formItemId}
-      aria-describedby={
-        !error
-          ? `${formDescriptionId}`
-          : `${formDescriptionId} ${formMessageId}`
-      }
-      aria-invalid={!!error}
-      {...props}
-    />
-  )
-})
-FormControl.displayName = "FormControl"
-
-const FormDescription = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLParagraphElement>
->(({ className, ...props }, ref) => {
-  const { formDescriptionId } = useFormField()
-
-  return (
-    <p
-      ref={ref}
-      id={formDescriptionId}
-      className={cn("text-sm text-muted-foreground", className)}
-      {...props}
-    />
-  )
-})
-FormDescription.displayName = "FormDescription"
-
-const FormMessage = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLParagraphElement>
->(({ className, children, ...props }, ref) => {
-  const { error, formMessageId } = useFormField()
-  const body = error ? String(error?.message ?? "") : children
-
-  if (!body) {
-    return null
-  }
-
-  return (
-    <p
-      ref={ref}
-      id={formMessageId}
-      className={cn("text-sm font-medium text-destructive", className)}
-      {...props}
-    >
-      {body}
-    </p>
-  )
-})
-FormMessage.displayName = "FormMessage"
-
-export {
-  useFormField,
-  Form,
-  FormItem,
-  FormLabel,
-  FormControl,
-  FormDescription,
-  FormMessage,
-  FormField,
-}
-</file>
-
-<file path="src/components/ui/grid.tsx">
-"use client";
-
-import * as React from "react"
-
-import { cn } from "@/lib/utils"
-
-interface GridProps extends React.HTMLAttributes<HTMLDivElement> {
-  numColumns?: number;
-}
-
-const Grid = React.forwardRef<HTMLDivElement, GridProps>(
-  ({ className, numColumns = 1, children, ...props }, ref) => {
-    return (
-      <div
-        ref={ref}
-        className={cn(
-          "grid",
-          `grid-cols-${numColumns}`,
-          className
-        )}
-        {...props}
-      >
-        {children}
-      </div>
-    )
-  }
-)
-Grid.displayName = "Grid"
-
-export { Grid }
-</file>
-
 <file path="src/components/ui/input.tsx">
 import * as React from "react"
 
@@ -2464,124 +3797,6 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
 Input.displayName = "Input"
 
 export { Input }
-</file>
-
-<file path="src/components/ui/label.tsx">
-"use client"
-
-import * as React from "react"
-import * as LabelPrimitive from "@radix-ui/react-label"
-import { cva, type VariantProps } from "class-variance-authority"
-
-import { cn } from "@/lib/utils"
-
-const labelVariants = cva(
-  "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-)
-
-const Label = React.forwardRef<
-  React.ElementRef<typeof LabelPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root> &
-    VariantProps<typeof labelVariants>
->(({ className, ...props }, ref) => (
-  <LabelPrimitive.Root
-    ref={ref}
-    className={cn(labelVariants(), className)}
-    {...props}
-  />
-))
-Label.displayName = LabelPrimitive.Root.displayName
-
-export { Label }
-</file>
-
-<file path="src/components/ui/loading-indicator.tsx">
-"use client";
-
-import React from 'react';
-import { Loader2, AlertCircle } from 'lucide-react';
-import { cva, type VariantProps } from 'class-variance-authority';
-import { cn } from '@/lib/utils';
-
-const loadingVariants = cva(
-  "flex items-center gap-2 rounded-md p-2 text-sm font-medium",
-  {
-    variants: {
-      variant: {
-        default: "bg-secondary text-secondary-foreground",
-        primary: "bg-primary/10 text-primary",
-        destructive: "bg-destructive/10 text-destructive",
-      },
-      size: {
-        sm: "text-xs py-1 px-2",
-        default: "text-sm py-2 px-3",
-        lg: "text-base py-3 px-4",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-      size: "default",
-    },
-  }
-);
-
-export interface LoadingIndicatorProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof loadingVariants> {
-  status?: 'loading' | 'error' | 'success';
-  message?: string;
-  progress?: number; // 0-100
-}
-
-/**
- * Enhanced loading indicator component with support for different states and progress
- */
-export function LoadingIndicator({
-  className,
-  variant,
-  size,
-  status = 'loading',
-  message,
-  progress,
-  ...props
-}: LoadingIndicatorProps) {
-  return (
-    <div
-      className={cn(loadingVariants({ variant, size }), className)}
-      {...props}
-    >
-      {status === 'loading' && (
-        <Loader2 className="h-4 w-4 animate-spin" />
-      )}
-      
-      {status === 'error' && (
-        <AlertCircle className="h-4 w-4 text-destructive" />
-      )}
-      
-      <span>
-        {message || (
-          status === 'loading' 
-            ? 'Loading...' 
-            : status === 'error'
-              ? 'An error occurred'
-              : 'Completed'
-        )}
-      </span>
-      
-      {typeof progress === 'number' && progress >= 0 && progress <= 100 && (
-        <div className="ml-auto flex items-center gap-2">
-          <div className="h-1.5 w-16 overflow-hidden rounded-full bg-background">
-            <div 
-              className="h-full bg-primary transition-all duration-300 ease-in-out" 
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-          <span className="text-xs tabular-nums">{Math.round(progress)}%</span>
-        </div>
-      )}
-    </div>
-  );
-}
 </file>
 
 <file path="src/components/ui/menubar.tsx">
@@ -2877,135 +4092,6 @@ PopoverContent.displayName = PopoverPrimitive.Content.displayName
 export { Popover, PopoverTrigger, PopoverContent }
 </file>
 
-<file path="src/components/ui/progress.tsx">
-"use client"
-
-import * as React from "react"
-import * as ProgressPrimitive from "@radix-ui/react-progress"
-
-import { cn } from "@/lib/utils"
-
-const Progress = React.forwardRef<
-  React.ElementRef<typeof ProgressPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof ProgressPrimitive.Root>
->(({ className, value, ...props }, ref) => (
-  <ProgressPrimitive.Root
-    ref={ref}
-    className={cn(
-      "relative h-4 w-full overflow-hidden rounded-full bg-secondary",
-      className
-    )}
-    {...props}
-  >
-    <ProgressPrimitive.Indicator
-      className="h-full w-full flex-1 bg-primary transition-all"
-      style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
-    />
-  </ProgressPrimitive.Root>
-))
-Progress.displayName = ProgressPrimitive.Root.displayName
-
-export { Progress }
-</file>
-
-<file path="src/components/ui/radio-group.tsx">
-"use client"
-
-import * as React from "react"
-import * as RadioGroupPrimitive from "@radix-ui/react-radio-group"
-import { Circle } from "lucide-react"
-
-import { cn } from "@/lib/utils"
-
-const RadioGroup = React.forwardRef<
-  React.ElementRef<typeof RadioGroupPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Root>
->(({ className, ...props }, ref) => {
-  return (
-    <RadioGroupPrimitive.Root
-      className={cn("grid gap-2", className)}
-      {...props}
-      ref={ref}
-    />
-  )
-})
-RadioGroup.displayName = RadioGroupPrimitive.Root.displayName
-
-const RadioGroupItem = React.forwardRef<
-  React.ElementRef<typeof RadioGroupPrimitive.Item>,
-  React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Item>
->(({ className, ...props }, ref) => {
-  return (
-    <RadioGroupPrimitive.Item
-      ref={ref}
-      className={cn(
-        "aspect-square h-4 w-4 rounded-full border border-primary text-primary ring-offset-background focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-        className
-      )}
-      {...props}
-    >
-      <RadioGroupPrimitive.Indicator className="flex items-center justify-center">
-        <Circle className="h-2.5 w-2.5 fill-current text-current" />
-      </RadioGroupPrimitive.Indicator>
-    </RadioGroupPrimitive.Item>
-  )
-})
-RadioGroupItem.displayName = RadioGroupPrimitive.Item.displayName
-
-export { RadioGroup, RadioGroupItem }
-</file>
-
-<file path="src/components/ui/scroll-area.tsx">
-"use client"
-
-import * as React from "react"
-import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area"
-
-import { cn } from "@/lib/utils"
-
-const ScrollArea = React.forwardRef<
-  React.ElementRef<typeof ScrollAreaPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root>
->(({ className, children, ...props }, ref) => (
-  <ScrollAreaPrimitive.Root
-    ref={ref}
-    className={cn("relative overflow-hidden", className)}
-    {...props}
-  >
-    <ScrollAreaPrimitive.Viewport className="h-full w-full rounded-[inherit]">
-      {children}
-    </ScrollAreaPrimitive.Viewport>
-    <ScrollBar />
-    <ScrollAreaPrimitive.Corner />
-  </ScrollAreaPrimitive.Root>
-))
-ScrollArea.displayName = ScrollAreaPrimitive.Root.displayName
-
-const ScrollBar = React.forwardRef<
-  React.ElementRef<typeof ScrollAreaPrimitive.ScrollAreaScrollbar>,
-  React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.ScrollAreaScrollbar>
->(({ className, orientation = "vertical", ...props }, ref) => (
-  <ScrollAreaPrimitive.ScrollAreaScrollbar
-    ref={ref}
-    orientation={orientation}
-    className={cn(
-      "flex touch-none select-none transition-colors",
-      orientation === "vertical" &&
-        "h-full w-2.5 border-l border-l-transparent p-[1px]",
-      orientation === "horizontal" &&
-        "h-2.5 flex-col border-t border-t-transparent p-[1px]",
-      className
-    )}
-    {...props}
-  >
-    <ScrollAreaPrimitive.ScrollAreaThumb className="relative flex-1 rounded-full bg-border" />
-  </ScrollAreaPrimitive.ScrollAreaScrollbar>
-))
-ScrollBar.displayName = ScrollAreaPrimitive.ScrollAreaScrollbar.displayName
-
-export { ScrollArea, ScrollBar }
-</file>
-
 <file path="src/components/ui/select.tsx">
 "use client"
 
@@ -3166,183 +4252,6 @@ export {
   SelectSeparator,
   SelectScrollUpButton,
   SelectScrollDownButton,
-}
-</file>
-
-<file path="src/components/ui/separator.tsx">
-"use client"
-
-import * as React from "react"
-import * as SeparatorPrimitive from "@radix-ui/react-separator"
-
-import { cn } from "@/lib/utils"
-
-const Separator = React.forwardRef<
-  React.ElementRef<typeof SeparatorPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof SeparatorPrimitive.Root>
->(
-  (
-    { className, orientation = "horizontal", decorative = true, ...props },
-    ref
-  ) => (
-    <SeparatorPrimitive.Root
-      ref={ref}
-      decorative={decorative}
-      orientation={orientation}
-      className={cn(
-        "shrink-0 bg-border",
-        orientation === "horizontal" ? "h-[1px] w-full" : "h-full w-[1px]",
-        className
-      )}
-      {...props}
-    />
-  )
-)
-Separator.displayName = SeparatorPrimitive.Root.displayName
-
-export { Separator }
-</file>
-
-<file path="src/components/ui/sheet.tsx">
-"use client"
-
-import * as React from "react"
-import * as SheetPrimitive from "@radix-ui/react-dialog"
-import { cva, type VariantProps } from "class-variance-authority"
-import { X } from "lucide-react"
-
-import { cn } from "@/lib/utils"
-
-const Sheet = SheetPrimitive.Root
-
-const SheetTrigger = SheetPrimitive.Trigger
-
-const SheetClose = SheetPrimitive.Close
-
-const SheetPortal = SheetPrimitive.Portal
-
-const SheetOverlay = React.forwardRef<
-  React.ElementRef<typeof SheetPrimitive.Overlay>,
-  React.ComponentPropsWithoutRef<typeof SheetPrimitive.Overlay>
->(({ className, ...props }, ref) => (
-  <SheetPrimitive.Overlay
-    className={cn(
-      "fixed inset-0 z-50 bg-black/80  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-      className
-    )}
-    {...props}
-    ref={ref}
-  />
-))
-SheetOverlay.displayName = SheetPrimitive.Overlay.displayName
-
-const sheetVariants = cva(
-  "fixed z-50 gap-4 bg-background p-6 shadow-lg transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500",
-  {
-    variants: {
-      side: {
-        top: "inset-x-0 top-0 border-b data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top",
-        bottom:
-          "inset-x-0 bottom-0 border-t data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
-        left: "inset-y-0 left-0 h-full w-3/4 border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-sm",
-        right:
-          "inset-y-0 right-0 h-full w-3/4  border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-sm",
-      },
-    },
-    defaultVariants: {
-      side: "right",
-    },
-  }
-)
-
-interface SheetContentProps
-  extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content>,
-    VariantProps<typeof sheetVariants> {}
-
-const SheetContent = React.forwardRef<
-  React.ElementRef<typeof SheetPrimitive.Content>,
-  SheetContentProps
->(({ side = "right", className, children, ...props }, ref) => (
-  <SheetPortal>
-    <SheetOverlay />
-    <SheetPrimitive.Content
-      ref={ref}
-      className={cn(sheetVariants({ side }), className)}
-      {...props}
-    >
-      {children}
-      <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
-        <X className="h-4 w-4" />
-        <span className="sr-only">Close</span>
-      </SheetPrimitive.Close>
-    </SheetPrimitive.Content>
-  </SheetPortal>
-))
-SheetContent.displayName = SheetPrimitive.Content.displayName
-
-const SheetHeader = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn(
-      "flex flex-col space-y-2 text-center sm:text-left",
-      className
-    )}
-    {...props}
-  />
-)
-SheetHeader.displayName = "SheetHeader"
-
-const SheetFooter = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn(
-      "flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2",
-      className
-    )}
-    {...props}
-  />
-)
-SheetFooter.displayName = "SheetFooter"
-
-const SheetTitle = React.forwardRef<
-  React.ElementRef<typeof SheetPrimitive.Title>,
-  React.ComponentPropsWithoutRef<typeof SheetPrimitive.Title>
->(({ className, ...props }, ref) => (
-  <SheetPrimitive.Title
-    ref={ref}
-    className={cn("text-lg font-semibold text-foreground", className)}
-    {...props}
-  />
-))
-SheetTitle.displayName = SheetPrimitive.Title.displayName
-
-const SheetDescription = React.forwardRef<
-  React.ElementRef<typeof SheetPrimitive.Description>,
-  React.ComponentPropsWithoutRef<typeof SheetPrimitive.Description>
->(({ className, ...props }, ref) => (
-  <SheetPrimitive.Description
-    ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
-    {...props}
-  />
-))
-SheetDescription.displayName = SheetPrimitive.Description.displayName
-
-export {
-  Sheet,
-  SheetPortal,
-  SheetOverlay,
-  SheetTrigger,
-  SheetClose,
-  SheetContent,
-  SheetHeader,
-  SheetFooter,
-  SheetTitle,
-  SheetDescription,
 }
 </file>
 
@@ -4112,55 +5021,6 @@ export {
 }
 </file>
 
-<file path="src/components/ui/skeleton.tsx">
-import { cn } from "@/lib/utils"
-
-function Skeleton({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div
-      className={cn("animate-pulse rounded-md bg-muted", className)}
-      {...props}
-    />
-  )
-}
-
-export { Skeleton }
-</file>
-
-<file path="src/components/ui/slider.tsx">
-"use client"
-
-import * as React from "react"
-import * as SliderPrimitive from "@radix-ui/react-slider"
-
-import { cn } from "@/lib/utils"
-
-const Slider = React.forwardRef<
-  React.ElementRef<typeof SliderPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof SliderPrimitive.Root>
->(({ className, ...props }, ref) => (
-  <SliderPrimitive.Root
-    ref={ref}
-    className={cn(
-      "relative flex w-full touch-none select-none items-center",
-      className
-    )}
-    {...props}
-  >
-    <SliderPrimitive.Track className="relative h-2 w-full grow overflow-hidden rounded-full bg-secondary">
-      <SliderPrimitive.Range className="absolute h-full bg-primary" />
-    </SliderPrimitive.Track>
-    <SliderPrimitive.Thumb className="block h-5 w-5 rounded-full border-2 border-primary bg-background ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50" />
-  </SliderPrimitive.Root>
-))
-Slider.displayName = SliderPrimitive.Root.displayName
-
-export { Slider }
-</file>
-
 <file path="src/components/ui/switch.tsx">
 "use client"
 
@@ -4527,44 +5387,6 @@ export {
 }
 </file>
 
-<file path="src/components/ui/toaster.tsx">
-"use client"
-
-import { useToast } from "@/hooks/use-toast"
-import {
-  Toast,
-  ToastClose,
-  ToastDescription,
-  ToastProvider,
-  ToastTitle,
-  ToastViewport,
-} from "@/components/ui/toast"
-
-export function Toaster() {
-  const { toasts } = useToast()
-
-  return (
-    <ToastProvider>
-      {toasts.map(function ({ id, title, description, action, ...props }) {
-        return (
-          <Toast key={id} {...props}>
-            <div className="grid gap-1">
-              {title && <ToastTitle>{title}</ToastTitle>}
-              {description && (
-                <ToastDescription>{description}</ToastDescription>
-              )}
-            </div>
-            {action}
-            <ToastClose />
-          </Toast>
-        )
-      })}
-      <ToastViewport />
-    </ToastProvider>
-  )
-}
-</file>
-
 <file path="src/components/ui/tooltip.tsx">
 "use client"
 
@@ -4598,710 +5420,39 @@ TooltipContent.displayName = TooltipPrimitive.Content.displayName
 export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider }
 </file>
 
-<file path="src/hooks/use-mobile.tsx">
-import * as React from "react"
+<file path="src/lib/utils.ts">
+import { clsx, type ClassValue } from "clsx"
+import { twMerge } from "tailwind-merge"
 
-const MOBILE_BREAKPOINT = 768
-
-export function useIsMobile() {
-  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)
-
-  React.useEffect(() => {
-    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
-    const onChange = () => {
-      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
-    }
-    mql.addEventListener("change", onChange)
-    setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
-    return () => mql.removeEventListener("change", onChange)
-  }, [])
-
-  return !!isMobile
-}
-</file>
-
-<file path="src/hooks/use-toast.ts">
-"use client"
-
-// Inspired by react-hot-toast library
-import * as React from "react"
-
-import type {
-  ToastActionElement,
-  ToastProps,
-} from "@/components/ui/toast"
-
-const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 1000000
-
-type ToasterToast = ToastProps & {
-  id: string
-  title?: React.ReactNode
-  description?: React.ReactNode
-  action?: ToastActionElement
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
 }
 
-const actionTypes = {
-  ADD_TOAST: "ADD_TOAST",
-  UPDATE_TOAST: "UPDATE_TOAST",
-  DISMISS_TOAST: "DISMISS_TOAST",
-  REMOVE_TOAST: "REMOVE_TOAST",
-} as const
-
-let count = 0
-
-function genId() {
-  count = (count + 1) % Number.MAX_SAFE_INTEGER
-  return count.toString()
-}
-
-type ActionType = typeof actionTypes
-
-type Action =
-  | {
-      type: ActionType["ADD_TOAST"]
-      toast: ToasterToast
-    }
-  | {
-      type: ActionType["UPDATE_TOAST"]
-      toast: Partial<ToasterToast>
-    }
-  | {
-      type: ActionType["DISMISS_TOAST"]
-      toastId?: ToasterToast["id"]
-    }
-  | {
-      type: ActionType["REMOVE_TOAST"]
-      toastId?: ToasterToast["id"]
-    }
-
-interface State {
-  toasts: ToasterToast[]
-}
-
-const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
-
-const addToRemoveQueue = (toastId: string) => {
-  if (toastTimeouts.has(toastId)) {
-    return
-  }
-
-  const timeout = setTimeout(() => {
-    toastTimeouts.delete(toastId)
-    dispatch({
-      type: "REMOVE_TOAST",
-      toastId: toastId,
-    })
-  }, TOAST_REMOVE_DELAY)
-
-  toastTimeouts.set(toastId, timeout)
-}
-
-export const reducer = (state: State, action: Action): State => {
-  switch (action.type) {
-    case "ADD_TOAST":
-      return {
-        ...state,
-        toasts: [action.toast, ...state.toasts].slice(0, TOAST_LIMIT),
-      }
-
-    case "UPDATE_TOAST":
-      return {
-        ...state,
-        toasts: state.toasts.map((t) =>
-          t.id === action.toast.id ? { ...t, ...action.toast } : t
-        ),
-      }
-
-    case "DISMISS_TOAST": {
-      const { toastId } = action
-
-      // ! Side effects ! - This could be extracted into a dismissToast() action,
-      // but I'll keep it here for simplicity
-      if (toastId) {
-        addToRemoveQueue(toastId)
-      } else {
-        state.toasts.forEach((toast) => {
-          addToRemoveQueue(toast.id)
-        })
-      }
-
-      return {
-        ...state,
-        toasts: state.toasts.map((t) =>
-          t.id === toastId || toastId === undefined
-            ? {
-                ...t,
-                open: false,
-              }
-            : t
-        ),
-      }
-    }
-    case "REMOVE_TOAST":
-      if (action.toastId === undefined) {
-        return {
-          ...state,
-          toasts: [],
-        }
-      }
-      return {
-        ...state,
-        toasts: state.toasts.filter((t) => t.id !== action.toastId),
-      }
-  }
-}
-
-const listeners: Array<(state: State) => void> = []
-
-let memoryState: State = { toasts: [] }
-
-function dispatch(action: Action) {
-  memoryState = reducer(memoryState, action)
-  listeners.forEach((listener) => {
-    listener(memoryState)
-  })
-}
-
-type Toast = Omit<ToasterToast, "id">
-
-function toast({ ...props }: Toast) {
-  const id = genId()
-
-  const update = (props: ToasterToast) =>
-    dispatch({
-      type: "UPDATE_TOAST",
-      toast: { ...props, id },
-    })
-  const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id })
-
-  dispatch({
-    type: "ADD_TOAST",
-    toast: {
-      ...props,
-      id,
-      open: true,
-      onOpenChange: (open) => {
-        if (!open) dismiss()
-      },
-    },
-  })
-
-  return {
-    id: id,
-    dismiss,
-    update,
-  }
-}
-
-function useToast() {
-  const [state, setState] = React.useState<State>(memoryState)
-
-  React.useEffect(() => {
-    listeners.push(setState)
-    return () => {
-      const index = listeners.indexOf(setState)
-      if (index > -1) {
-        listeners.splice(index, 1)
-      }
-    }
-  }, [state])
-
-  return {
-    ...state,
-    toast,
-    dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
-  }
-}
-
-export { useToast, toast }
-</file>
-
-<file path="src/lib/cache-service.ts">
 /**
- * Cache service for storing and retrieving generated images
- * Provides TTL support, error handling, and consistent cache key generation
+ * Checks if a string is a valid base64 image Data URI.
  */
+export const isDataURI = (uri: string): boolean => /^data:image\/[a-zA-Z]+;base64,/.test(uri);
+</file>
 
-import fs from 'fs/promises';
-import path from 'path';
-import crypto from 'crypto';
-import { existsSync, mkdirSync } from 'fs';
-import { GenerateClothingImageInput, GenerateClothingImageOutput } from '@/app/actions';
+<file path="src/types/actions.ts">
+import { z } from 'zod';
+import { generateClothingImageInputSchema } from '@/lib/validation';
 
-// Types for cache entries
-export interface CacheEntry<T> {
-  data: T;
-  timestamp: number;
-  expiresAt: number | null; // null means no expiration
-}
+// Input type for the generateClothingImage function - Inferred from Zod schema
+export type GenerateClothingImageInput = z.infer<typeof generateClothingImageInputSchema>;
 
-// Cache configuration
-interface CacheConfig {
-  basePath: string;
-  defaultTTL: number | null; // in milliseconds, null means no expiration
-}
-
-// Default configuration
-const DEFAULT_CONFIG: CacheConfig = {
-  basePath: path.join(process.cwd(), '.cache'),
-  defaultTTL: 7 * 24 * 60 * 60 * 1000, // 1 week in milliseconds
+// Output type for the generateClothingImage function
+export type GenerateClothingImageOutput = {
+  generatedImageUrl: string; // Will become persistent URL later
+  promptUsed: string;
 };
 
-/**
- * Service for caching generated images and related data
- */
-export class CacheService {
-  private config: CacheConfig;
-
-  constructor(config: Partial<CacheConfig> = {}) {
-    this.config = { ...DEFAULT_CONFIG, ...config };
-    
-    // Ensure cache directory exists
-    if (!existsSync(this.config.basePath)) {
-      mkdirSync(this.config.basePath, { recursive: true });
-    }
-  }
-
-  /**
-   * Generate a consistent cache key from input parameters
-   */
-  public createCacheKey(input: GenerateClothingImageInput): string {
-    const data = {
-      clothingUrl: input.clothingItemUrl,
-      model: {
-        gender: input.modelGender,
-        bodyType: input.modelBodyType,
-        ageRange: input.modelAgeRange,
-        ethnicity: input.modelEthnicity,
-      },
-      environment: {
-        description: input.environmentDescription,
-        lighting: input.lightingStyle,
-        lens: input.lensStyle,
-      }
-    };
-    
-    // Create a deterministic hash of the input data
-    return crypto
-      .createHash('md5')
-      .update(JSON.stringify(data))
-      .digest('hex');
-  }
-
-  /**
-   * Get the full path to a cache file
-   */
-  private getCachePath(key: string): string {
-    return path.join(this.config.basePath, `${key}.json`);
-  }
-
-  /**
-   * Store data in the cache with optional TTL
-   */
-  public async set<T>(
-    key: string, 
-    data: T, 
-    ttl: number | null = this.config.defaultTTL
-  ): Promise<void> {
-    try {
-      const cachePath = this.getCachePath(key);
-      const entry: CacheEntry<T> = {
-        data,
-        timestamp: Date.now(),
-        expiresAt: ttl ? Date.now() + ttl : null,
-      };
-      
-      await fs.writeFile(cachePath, JSON.stringify(entry), 'utf-8');
-    } catch (error) {
-      console.error(`Cache write error for key ${key}:`, error);
-      // Fail gracefully - don't throw errors for cache operations
-    }
-  }
-
-  /**
-   * Retrieve data from the cache if it exists and is not expired
-   */
-  public async get<T>(key: string): Promise<T | null> {
-    try {
-      const cachePath = this.getCachePath(key);
-      
-      // Check if cache file exists
-      try {
-        await fs.access(cachePath);
-      } catch {
-        return null; // File doesn't exist
-      }
-      
-      // Read and parse cache file
-      const data = await fs.readFile(cachePath, 'utf-8');
-      const entry = JSON.parse(data) as CacheEntry<T>;
-      
-      // Check if entry is expired
-      if (entry.expiresAt && entry.expiresAt < Date.now()) {
-        // Expired entry - delete it asynchronously and return null
-        fs.unlink(cachePath).catch(err => 
-          console.error(`Failed to delete expired cache entry ${key}:`, err)
-        );
-        return null;
-      }
-      
-      return entry.data;
-    } catch (error) {
-      console.error(`Cache read error for key ${key}:`, error);
-      return null; // Fail gracefully
-    }
-  }
-
-  /**
-   * Delete a cache entry
-   */
-  public async delete(key: string): Promise<boolean> {
-    try {
-      const cachePath = this.getCachePath(key);
-      await fs.unlink(cachePath);
-      return true;
-    } catch (error) {
-      console.error(`Cache delete error for key ${key}:`, error);
-      return false;
-    }
-  }
-
-  /**
-   * Clear all cache entries
-   */
-  public async clear(): Promise<boolean> {
-    try {
-      const files = await fs.readdir(this.config.basePath);
-      
-      await Promise.all(
-        files.map(file => 
-          fs.unlink(path.join(this.config.basePath, file))
-            .catch(err => console.error(`Failed to delete cache file ${file}:`, err))
-        )
-      );
-      
-      return true;
-    } catch (error) {
-      console.error('Cache clear error:', error);
-      return false;
-    }
-  }
-
-  /**
-   * Check if a cache entry exists and is not expired
-   */
-  public async has(key: string): Promise<boolean> {
-    const result = await this.get(key);
-    return result !== null;
-  }
-}
-
-// Export a singleton instance for use throughout the application
-export const imageCache = new CacheService({
-  basePath: path.join(process.cwd(), '.cache', 'images'),
-});
-</file>
-
-<file path="src/lib/errors.ts">
-/**
- * Custom error types for better error handling throughout the application
- */
-
-// Base application error
-export class AppError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'AppError';
-  }
-}
-
-// Validation errors
-export class ValidationError extends AppError {
-  constructor(
-    message: string,
-    public readonly field?: string,
-    public readonly details?: any
-  ) {
-    super(message);
-    this.name = 'ValidationError';
-  }
-}
-
-// API errors
-export class ApiError extends AppError {
-  constructor(
-    message: string,
-    public readonly statusCode?: number,
-    public readonly details?: any
-  ) {
-    super(message);
-    this.name = 'ApiError';
-  }
-}
-
-// Image processing errors
-export class ImageProcessingError extends AppError {
-  constructor(
-    message: string,
-    public readonly originalError?: Error
-  ) {
-    super(message);
-    this.name = 'ImageProcessingError';
-  }
-}
-
-// Network errors
-export class NetworkError extends AppError {
-  constructor(
-    message: string,
-    public readonly originalError?: Error
-  ) {
-    super(message);
-    this.name = 'NetworkError';
-  }
-}
-
-// Cache errors
-export class CacheError extends AppError {
-  constructor(
-    message: string,
-    public readonly cacheKey?: string,
-    public readonly originalError?: Error
-  ) {
-    super(message);
-    this.name = 'CacheError';
-  }
-}
-
-// AI model errors
-export class AIModelError extends AppError {
-  constructor(
-    message: string,
-    public readonly modelName?: string,
-    public readonly details?: any
-  ) {
-    super(message);
-    this.name = 'AIModelError';
-  }
-}
-
-// Helper function to convert unknown errors to AppError
-export function toAppError(error: unknown): AppError {
-  if (error instanceof AppError) {
-    return error;
-  }
-  
-  if (error instanceof Error) {
-    // Check for specific error types based on message or properties
-    if (error.message.includes('network') || error.message.includes('fetch')) {
-      return new NetworkError(error.message, error);
-    }
-    
-    if (error.message.includes('image') || error.message.includes('png') || 
-        error.message.includes('jpg') || error.message.includes('webp')) {
-      return new ImageProcessingError(error.message, error);
-    }
-    
-    // Default to generic AppError
-    return new AppError(error.message);
-  }
-  
-  // For non-Error objects
-  return new AppError(
-    typeof error === 'string' 
-      ? error 
-      : 'An unknown error occurred'
-  );
-}
-
-// Error response type for API responses
-export type ErrorResponse = {
-  code: string;
+// Error response type
+export type GenerationError = {
+  code: 'API_ERROR' | 'VALIDATION_ERROR' | 'PROCESSING_ERROR' | 'NETWORK_ERROR';
   message: string;
   details?: any;
 };
-</file>
-
-<file path="src/lib/prompt-builder.ts">
-/**
- * PromptBuilder - A utility for constructing well-structured prompts for the AI model
- * 
- * This helps create consistent, high-quality prompts that lead to better generation results.
- */
-
-import { ModelSettings, EnvironmentSettings } from '@/types';
-
-export class PromptBuilder {
-  private sections: string[] = [];
-  
-  constructor() {
-    // Initialize with system context
-    this.addSystemContext();
-  }
-
-  /**
-   * Add system context to help guide the AI model
-   */
-  private addSystemContext(): this {
-    this.sections.push(
-      "Generate a photorealistic image of a virtual model wearing the provided clothing item with the following specifications:"
-    );
-    return this;
-  }
-
-  /**
-   * Add model attributes section
-   */
-  public addModelAttributes(settings: ModelSettings): this {
-    this.sections.push(
-      "Model Attributes:",
-      `- Gender: ${settings.gender}`,
-      `- Body Type: ${settings.bodyType}`,
-      `- Age Range: ${settings.ageRange}`,
-      `- Ethnicity: ${settings.ethnicity}`
-    );
-    return this;
-  }
-
-  /**
-   * Add environment settings section
-   */
-  public addEnvironmentSettings(settings: EnvironmentSettings): this {
-    this.sections.push(
-      "Environment Settings:",
-      `- Background: ${settings.description}`,
-      `- Lighting: ${settings.lighting}`,
-      `- Lens Style: ${settings.lensStyle}`
-    );
-    return this;
-  }
-
-  /**
-   * Add specific instructions for the AI model
-   */
-  public addInstructions(): this {
-    this.sections.push(
-      "Instructions:",
-      "- Create a photorealistic image that clearly shows the model wearing the provided clothing item",
-      "- Ensure the clothing item is clearly visible and properly fitted to the model",
-      "- Maintain natural proportions and realistic lighting",
-      "- The model should be in a natural pose that showcases the clothing item well",
-      "- The image should be high quality and suitable for e-commerce use"
-    );
-    return this;
-  }
-
-  /**
-   * Add custom section to the prompt
-   */
-  public addCustomSection(title: string, lines: string[]): this {
-    this.sections.push(title, ...lines.map(line => `- ${line}`));
-    return this;
-  }
-
-  /**
-   * Build the final prompt string
-   */
-  public build(): string {
-    return this.sections.join('\n\n');
-  }
-
-  /**
-   * Create a complete prompt from model and environment settings
-   */
-  public static createPrompt(
-    modelSettings: ModelSettings,
-    environmentSettings: EnvironmentSettings
-  ): string {
-    return new PromptBuilder()
-      .addModelAttributes(modelSettings)
-      .addEnvironmentSettings(environmentSettings)
-      .addInstructions()
-      .build();
-  }
-}
-</file>
-
-<file path="src/types/index.ts">
-/**
- * Common types used throughout the application
- */
-
-// Model settings
-export interface ModelSettings {
-  gender: 'male' | 'female' | 'non-binary';
-  bodyType: 'slim' | 'athletic' | 'average' | 'plus-size';
-  ageRange: '18-25' | '26-35' | '36-45' | '46-60' | '60+';
-  ethnicity: 'caucasian' | 'black' | 'asian' | 'hispanic' | 'middle-eastern' | 'mixed';
-}
-
-// Environment settings
-export interface EnvironmentSettings {
-  description: string;
-  lighting: 'natural' | 'studio' | 'soft' | 'dramatic' | 'bright';
-  lensStyle: 'portrait' | 'fashion' | 'product' | 'editorial' | 'casual';
-}
-
-// Generation result
-export interface GenerationResult {
-  originalImageUrl: string;
-  generatedImageUrl: string;
-  promptUsed: string;
-  timestamp: number;
-  modelSettings: ModelSettings;
-  environmentSettings: EnvironmentSettings;
-}
-
-// API response types
-export interface ApiResponse<T> {
-  data?: T;
-  error?: {
-    code: string;
-    message: string;
-    details?: any;
-  };
-}
-
-// Generation history entry
-export interface HistoryEntry {
-  id: string;
-  originalImage: string;
-  generatedImage: string;
-  timestamp: number;
-  modelSettings?: ModelSettings;
-  environmentSettings?: EnvironmentSettings;
-}
-</file>
-
-<file path="tsconfig.json">
-{
-  "compilerOptions": {
-    "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "noEmit": true,
-    "esModuleInterop": true,
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "preserve",
-    "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
-    "paths": {
-      "@/*": ["./src/*"]
-    }
-  },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
-}
 </file>
 
 <file path=".gitignore">
@@ -5371,122 +5522,6 @@ const config = {
 };
 
 export default config;
-</file>
-
-<file path="src/app/layout.tsx">
-import type {Metadata} from 'next';
-import {Geist, Geist_Mono} from 'next/font/google';
-import './globals.css';
-import {Avatar, AvatarFallback, AvatarImage} from "@/components/ui/avatar";
-
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-});
-
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
-});
-
-export const metadata: Metadata = {
-  title: 'StyleAI - Virtual Fashion App',
-  description: 'Virtually try on clothes using AI models.',
-};
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  return (
-    <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-      <header className="bg-background border-b">
-        <div className="container flex items-center justify-between h-16">
-          <a href="/" className="text-2xl font-bold">
-            StyleAI
-          </a>
-          <div className="flex items-center space-x-4">
-            <Avatar>
-              <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
-              <AvatarFallback>CN</AvatarFallback>
-            </Avatar>
-            <span className="text-sm font-medium">John Doe</span>
-          </div>
-        </div>
-      </header>
-      <main className="container mx-auto py-10">
-        {children}
-      </main>
-      </body>
-    </html>
-  );
-}
-</file>
-
-<file path="src/components/ui/accordion.tsx">
-"use client"
-
-import * as React from "react"
-import * as AccordionPrimitive from "@radix-ui/react-accordion"
-import { ChevronDown } from "lucide-react"
-
-import { cn } from "@/lib/utils"
-
-const Accordion = AccordionPrimitive.Root
-
-const AccordionItem = React.forwardRef<
-  React.ElementRef<typeof AccordionPrimitive.Item>,
-  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Item>
->(({ className, ...props }, ref) => (
-  <AccordionPrimitive.Item
-    ref={ref}
-    // V4 Fix: Added explicit border color
-    className={cn("border-b border-border", className)}
-    {...props}
-  />
-))
-AccordionItem.displayName = "AccordionItem"
-
-const AccordionTrigger = React.forwardRef<
-  React.ElementRef<typeof AccordionPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Trigger>
->(({ className, children, ...props }, ref) => (
-  <AccordionPrimitive.Header className="flex">
-    <AccordionPrimitive.Trigger
-      ref={ref}
-      className={cn(
-        "flex flex-1 items-center justify-between py-4 font-medium transition-all hover:underline [&[data-state=open]>svg]:rotate-180",
-        // No outline-none needed here usually, relies on browser default or ring
-        className
-      )}
-      {...props}
-    >
-      {children}
-      <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
-    </AccordionPrimitive.Trigger>
-  </AccordionPrimitive.Header>
-))
-AccordionTrigger.displayName = AccordionPrimitive.Trigger.displayName
-
-const AccordionContent = React.forwardRef<
-  React.ElementRef<typeof AccordionPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Content>
->(({ className, children, ...props }, ref) => (
-  <AccordionPrimitive.Content
-    ref={ref}
-    // V4 Fix: Use custom utilities defined in globals.css
-    className="overflow-hidden text-sm transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down"
-    {...props}
-  >
-    <div className={cn("pb-4 pt-0", className)}>{children}</div>
-  </AccordionPrimitive.Content>
-))
-
-AccordionContent.displayName = AccordionPrimitive.Content.displayName
-
-export { Accordion, AccordionItem, AccordionTrigger, AccordionContent }
 </file>
 
 <file path="src/components/ui/alert-dialog.tsx">
@@ -5797,20 +5832,6 @@ export const useGenerationStore = create<GenerationState>()(
 );
 </file>
 
-<file path="src/lib/utils.ts">
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
-
-/**
- * Checks if a string is a valid base64 image Data URI.
- */
-export const isDataURI = (uri: string): boolean => /^data:image\/[a-zA-Z]+;base64,/.test(uri);
-</file>
-
 <file path="src/lib/validation.ts">
 /**
  * Validation schemas and utilities for input validation
@@ -5920,27 +5941,6 @@ export function validate<T>(schema: z.ZodSchema<T>, data: unknown): T {
 export function validateImageUrl(url: string): string {
   return validate(imageUrlSchema, url);
 }
-</file>
-
-<file path="src/types/actions.ts">
-import { z } from 'zod';
-import { generateClothingImageInputSchema } from '@/lib/validation';
-
-// Input type for the generateClothingImage function - Inferred from Zod schema
-export type GenerateClothingImageInput = z.infer<typeof generateClothingImageInputSchema>;
-
-// Output type for the generateClothingImage function
-export type GenerateClothingImageOutput = {
-  generatedImageUrl: string; // Will become persistent URL later
-  promptUsed: string;
-};
-
-// Error response type
-export type GenerationError = {
-  code: 'API_ERROR' | 'VALIDATION_ERROR' | 'PROCESSING_ERROR' | 'NETWORK_ERROR';
-  message: string;
-  details?: any;
-};
 </file>
 
 <file path="tailwind.config.ts">
@@ -6623,14 +6623,14 @@ export default function Home() {
 
   return (
     // Added min-h-screen and flex column structure for potential footer later
-    <div className="container mx-auto px-4 py-6 max-w-7xl flex flex-col min-h-screen">
+    <div className="container mx-auto px-4 py-6 max-w-7xl flex flex-col h-dvh overflow-hidden">
       <Toaster />
-      <header className="mb-4 text-center">
+      <header className="mb-4 text-center flex-shrink-0">
         <h1 className="text-3xl font-bold">StyleAI</h1>
       </header>
 
       {/* Main content grid */}
-      <main className="flex-grow grid grid-cols-1 lg:grid-cols-[minmax(350px,_1fr)_2fr] xl:grid-cols-[minmax(350px,_1fr)_1.5fr_1.5fr] gap-4">
+      <main className="min-h-0 overflow-y-auto grid grid-cols-1 lg:grid-cols-[minmax(350px,_1fr)_2fr] xl:grid-cols-[minmax(350px,_1fr)_1.5fr_1.5fr] gap-4">
 
         {/* Left Column: Controls */}
         <div className="lg:col-span-1 flex flex-col h-full space-y-4">
