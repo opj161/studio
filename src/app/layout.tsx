@@ -1,8 +1,7 @@
-
 import type {Metadata} from 'next';
 import {Geist, Geist_Mono} from 'next/font/google';
 import './globals.css';
-import {Avatar, AvatarFallback, AvatarImage} from "@/components/ui/avatar";
+import {Avatar, AvatarFallback, AvatarImage} from '../components/ui/avatar';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -26,9 +25,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full">
-      <body className={`h-full ${geistSans.variable} ${geistMono.variable} antialiased`}>
-      <header className="bg-background border-b">
-        <div className="container flex items-center justify-between h-16">
+      {/* Add flex flex-col to body */}
+      <body className={`h-full flex flex-col ${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <header className="bg-background border-b flex-shrink-0"> {/* Add flex-shrink-0 */}
+        <div className="container flex items-center justify-between h-16 mx-auto px-4"> {/* Re-added container styles here */}
           <a href="/" className="text-2xl font-bold">
             StyleAI
           </a>
@@ -41,7 +41,8 @@ export default function RootLayout({
           </div>
         </div>
       </header>
-      <main className="container mx-auto py-10">
+      {/* Remove container, mx-auto, py-10. Add flex-1, min-h-0 */}
+      <main className="flex-1 min-h-0">
         {children}
       </main>
       </body>

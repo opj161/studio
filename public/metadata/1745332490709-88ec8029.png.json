@@ -1,0 +1,15 @@
+{
+  "timestamp": 1745332490713,
+  "sourceImage": "data:image/webp;base64,UklGRtJLBQBXRUJQVlA4TMZLBQA... (base64)",
+  "modelSettings": {
+    "gender": "female",
+    "bodyType": "athletic",
+    "ageRange": "26-35",
+    "ethnicity": "caucasian"
+  },
+  "environmentSettings": {
+    "description": "studio",
+    "lighting": "soft",
+    "lensStyle": "portrait"
+  }
+}

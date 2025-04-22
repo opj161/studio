@@ -80,7 +80,7 @@ export default function ImageDisplayCard({ type }: ImageDisplayCardProps) {
          <CardTitle>{title}</CardTitle>
        </CardHeader>
        <CardContent className="p-4 flex-grow"> {/* Content grows */}
-         <div className="relative aspect-square w-full h-full bg-muted rounded-md overflow-hidden"> {/* Container uses full height */}
+         <div className="relative w-full h-full bg-muted rounded-md overflow-hidden"> {/* Container uses full height */}
            {/* Loading State (Generated Only) */}
            {type === 'generated' && isLoading && (
               <div className="absolute inset-0 flex flex-col items-center justify-center p-6">
